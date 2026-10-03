@@ -1,66 +1,61 @@
 key,en,pt,es
-area.grocery,Mini Market,Mercadinho,Minimercado
-area.sweets,Sweet Bakery,Doceria,Pastelería
-area.toys,Toy Store,Loja de Brinquedos,Juguetería
-area.beauty,Beauty Boutique,Butique de Beleza,Boutique de Belleza
-area.fresh,Fruit Market,Hortifruti,Frutería
-product.soda_orange,Orange Soda,Refri de Laranja,Refresco de Naranja
-product.soda_lime,Lime Soda,Refri de Limão,Refresco de Lima
-product.cola_bottle,Cola,Refri de Cola,Refresco de Cola
-product.water_bottle,Water,Água,Agua
-product.milk_carton,Milk,Leite,Leche
-product.juice_strawberry,Strawberry Juice,Suco de Morango,Jugo de Fresa
-product.ketchup,Ketchup,Ketchup,Ketchup
-product.mustard,Mustard,Mostarda,Mostaza
-product.honey_jar,Honey,Mel,Miel
-product.jam_jar,Jam,Geleia,Mermelada
-product.cereal_box,Cereal,Cereal,Cereal
-product.chips_bag,Chips,Batata Chips,Papas Fritas
-product.cupcake,Cupcake,Cupcake,Cupcake
-product.donut,Donut,Rosquinha,Dona
-product.macarons,Macarons,Macarons,Macarons
-product.lollipop,Lollipop,Pirulito,Paleta
-product.gummy_jar,Gummy Bears,Ursinhos de Goma,Ositos de Goma
-product.chocolate_bar,Chocolate,Chocolate,Chocolate
-product.cookie_jar,Cookie Jar,Pote de Biscoitos,Tarro de Galletas
-product.ice_cream,Ice Cream,Sorvete,Helado
-product.croissant,Croissant,Croissant,Croissant
-product.cake_slice,Cake Slice,Fatia de Bolo,Rebanada de Pastel
-product.milkshake,Milkshake,Milkshake,Malteada
-product.cotton_candy,Cotton Candy,Algodão-Doce,Algodón de Azúcar
-product.teddy_bear,Teddy Bear,Ursinho de Pelúcia,Osito de Peluche
-product.rubber_duck,Rubber Duck,Patinho de Borracha,Patito de Goma
-product.bunny_plush,Bunny Plush,Coelhinho,Conejito
-product.toy_rocket,Toy Rocket,Foguete,Cohete
-product.robot_toy,Robot,Robô,Robot
-product.dino_toy,Dino,Dinossauro,Dinosaurio
-product.toy_car,Toy Car,Carrinho,Carrito
-product.beach_ball,Beach Ball,Bola de Praia,Pelota de Playa
-product.puzzle_cube,Puzzle Cube,Cubo Mágico,Cubo Mágico
-product.frog_plush,Frog Plush,Sapinho,Ranita
-product.toy_train,Toy Train,Trenzinho,Trencito
-product.spinning_top,Spinning Top,Pião,Trompo
-product.lipstick,Lipstick,Batom,Labial
-product.nail_polish,Nail Polish,Esmalte,Esmalte
-product.perfume,Perfume,Perfume,Perfume
-product.shampoo,Shampoo,Shampoo,Champú
-product.lotion_pump,Lotion,Loção,Loción
-product.face_cream,Face Cream,Creme Facial,Crema Facial
-product.hand_mirror,Mirror,Espelho,Espejo
-product.hair_brush,Hair Brush,Escova,Cepillo
-product.toothpaste,Toothpaste,Pasta de Dente,Pasta Dental
-product.sunscreen,Sunscreen,Protetor Solar,Protector Solar
-product.makeup_compact,Blush,Blush,Rubor
-product.body_mist,Body Mist,Body Splash,Bruma Corporal
-product.apple,Apple,Maçã,Manzana
-product.pineapple,Pineapple,Abacaxi,Piña
-product.avocado,Avocado,Abacate,Aguacate
-product.banana,Bananas,Bananas,Plátanos
-product.strawberry_basket,Strawberries,Morangos,Fresas
-product.carrots,Carrots,Cenouras,Zanahorias
-product.broccoli,Broccoli,Brócolis,Brócoli
-product.eggplant,Eggplant,Berinjela,Berenjena
-product.grapes,Grapes,Uvas,Uvas
-product.watermelon,Watermelon,Melancia,Sandía
-product.peach,Peach,Pêssego,Durazno
-product.corn,Corn,Milho,Maíz
+area.forest,Enchanted Forest,Floresta Encantada,Bosque Encantado
+area.crystal,Crystal Caves,Cavernas de Cristal,Cuevas de Cristal
+area.candy,Candy Kingdom,Reino dos Doces,Reino de los Dulces
+area.sky,Sky Castle,Castelo nas Nuvens,Castillo en las Nubes
+area.lagoon,Coral Lagoon,Lagoa de Coral,Laguna de Coral
+area.moon,Moonlit Village,Vila do Luar,Aldea de la Luna
+card.glow_mushroom,Glow Shroom,Cogumelo Brilhante,Hongo Brillante
+card.firefly_jar,Firefly Jar,Pote de Vaga-lumes,Frasco de Luciérnagas
+card.wise_owl,Wise Owl,Coruja Sábia,Búho Sabio
+card.leaf_spellbook,Leaf Spellbook,Livro de Folhas,Libro de Hojas
+card.acorn_potion,Acorn Potion,Poção de Bolota,Poción de Bellota
+card.fairy_lantern,Fairy Lantern,Lanterna de Fada,Farol de Hada
+card.magic_watering_can,Magic Watering Can,Regador Mágico,Regadera Mágica
+card.lucky_clover,Lucky Clover,Trevo da Sorte,Trébol de la Suerte
+card.baby_dragon,Baby Dragon,Dragãozinho,Dragoncito
+card.amethyst_cluster,Amethyst,Ametista,Amatista
+card.crystal_ball,Crystal Ball,Bola de Cristal,Bola de Cristal
+card.geode,Geode,Geodo,Geoda
+card.blue_lantern,Miner's Lantern,Lampião Azul,Farol Azul
+card.crystal_bat,Crystal Bat,Morcego de Cristal,Murciélago de Cristal
+card.starlight_potion,Starlight Potion,Poção Estelar,Poción Estelar
+card.rainbow_pickaxe,Rainbow Pickaxe,Picareta Arco-íris,Pico Arcoíris
+card.gem_ring,Gem Ring,Anel de Gema,Anillo de Gema
+card.gem_crown,Gem Tiara,Tiara de Gemas,Tiara de Gemas
+card.gingerbread_wizard,Gingerbread Wizard,Mago de Gengibre,Mago de Jengibre
+card.candy_wand,Candy Wand,Varinha de Bala,Varita de Caramelo
+card.choco_cauldron,Choco Cauldron,Caldeirão de Chocolate,Caldero de Chocolate
+card.lollipop_potion,Lollipop Potion,Poção de Pirulito,Poción de Paleta
+card.gummy_dragon,Gummy Dragon,Dragão de Goma,Dragón de Gomita
+card.cupcake_castle,Cupcake Castle,Castelo de Cupcake,Castillo de Cupcake
+card.rainbow_macaron,Rainbow Macaron,Macaron Arco-íris,Macaron Arcoíris
+card.honey_drops,Honey Drops,Balas de Mel,Caramelos de Miel
+card.sugar_unicorn,Sugar Unicorn,Unicórnio de Açúcar,Unicornio de Azúcar
+card.flying_broom,Flying Broom,Vassoura Voadora,Escoba Voladora
+card.cloud_kitten,Cloud Kitten,Gatinho de Nuvem,Gatito de Nube
+card.rainbow_potion,Rainbow Potion,Poção Arco-íris,Poción Arcoíris
+card.hot_air_balloon,Hot Air Balloon,Balão,Globo Aerostático
+card.star_compass,Star Compass,Bússola Estelar,Brújula Estelar
+card.brass_telescope,Telescope,Telescópio,Telescopio
+card.magic_carpet,Magic Carpet,Tapete Mágico,Alfombra Mágica
+card.lightning_jar,Lightning Jar,Pote de Raio,Frasco de Rayo
+card.winged_hourglass,Winged Hourglass,Ampulheta Alada,Reloj de Arena Alado
+card.mermaid_potion,Mermaid Potion,Poção de Sereia,Poción de Sirena
+card.magic_shell,Magic Shell,Concha Mágica,Concha Mágica
+card.pearl_clam,Pearl Clam,Ostra com Pérola,Almeja con Perla
+card.octopus_wizard,Octopus Wizard,Polvo Mago,Pulpo Mago
+card.treasure_chest,Sea Treasure,Tesouro do Mar,Tesoro del Mar
+card.wand_starfish,Starfish,Estrela-do-mar,Estrella de Mar
+card.coral_crown,Coral Crown,Coroa de Coral,Corona de Coral
+card.bubble_potion,Bubble Potion,Poção de Bolhas,Poción de Burbujas
+card.seahorse,Seahorse,Cavalo-marinho,Caballito de Mar
+card.happy_pumpkin,Happy Pumpkin,Abóbora Feliz,Calabaza Feliz
+card.star_witch_hat,Witch Hat,Chapéu de Bruxa,Sombrero de Bruja
+card.moon_potion,Moon Potion,Poção da Lua,Poción de Luna
+card.friendly_ghost,Friendly Ghost,Fantasminha,Fantasmita
+card.broom_kitten,Broom Kitten,Gatinho na Vassoura,Gatito en Escoba
+card.bat_cupcake,Bat Cupcake,Cupcake Morcego,Cupcake Murciélago
+card.green_cauldron,Bubbling Cauldron,Caldeirão Borbulhante,Caldero Burbujeante
+card.web_dreamcatcher,Dreamcatcher,Filtro dos Sonhos,Atrapasueños
+card.candle_lantern,Candle Lantern,Lanterna de Vela,Farol de Vela
