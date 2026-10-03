@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9e6bb0ba8593e45d6af809db63959083, type: 3}
+  m_Name: ServicesConfig
+  m_EditorClassIdentifier: PotionPop.Runtime::PotionPop.Services.ServicesConfig
+  firebaseApiKey: 
+  firebaseProjectId: 
+  googleWebClientId: 
+  googleIosClientId: 
+  admobAndroidAppId: ca-app-pub-3940256099942544~3347511713
+  admobIosAppId: ca-app-pub-3940256099942544~1458002511
+  bannerAndroid: ca-app-pub-3940256099942544/9214589741
+  interstitialAndroid: ca-app-pub-3940256099942544/1033173712
+  rewardedAndroid: ca-app-pub-3940256099942544/5224354917
+  bannerIos: ca-app-pub-3940256099942544/2435281174
+  interstitialIos: ca-app-pub-3940256099942544/4411468910
+  rewardedIos: ca-app-pub-3940256099942544/1712485313
+  simulatedAdsInEditor: 0
+  privacyPolicyUrl: https://brunogames.com.br/jogos/potion-pop/privacidade
+  termsUrl: https://brunogames.com.br/termos
+  supportEmail: suporte@brunogames.com.br

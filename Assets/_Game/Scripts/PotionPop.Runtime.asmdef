@@ -1,0 +1,22 @@
+{
+    "name": "PotionPop.Runtime",
+    "rootNamespace": "PotionPop",
+    "references": [
+        "Unity.TextMeshPro",
+        "UnityEngine.UI",
+        "Unity.InputSystem",
+        "AppleAuth"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        { "name": "com.google.ads.mobile", "expression": "", "define": "SP_ADMOB" },
+        { "name": "com.lupidan.apple-signin-unity", "expression": "", "define": "SP_APPLE_AUTH" }
+    ],
+    "noEngineReferences": false
+}

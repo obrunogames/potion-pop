@@ -1,0 +1,92 @@
+key,en,pt,es
+auth.error.cancelled,Sign-in cancelled.,Login cancelado.,Inicio de sesión cancelado.
+auth.error.network,No internet connection. Check your network and try again.,Sem conexão com a internet. Verifique sua rede e tente de novo.,Sin conexión a internet. Revisa tu red e inténtalo de nuevo.
+auth.error.unavailable,This sign-in option is not available on this device.,Esta opção de login não está disponível neste aparelho.,Esta opción de inicio de sesión no está disponible en este dispositivo.
+auth.error.cloud_disabled,Cloud save is not available in this version. Your progress is saved on this device.,O salvamento na nuvem não está disponível nesta versão. Seu progresso fica salvo neste aparelho.,El guardado en la nube no está disponible en esta versión. Tu progreso se guarda en este dispositivo.
+auth.error.failed,Sign-in failed. Please try again.,Não foi possível entrar. Tente de novo.,No se pudo iniciar sesión. Inténtalo de nuevo.
+auth.error.busy,"Please wait, sign-in is already in progress.","Aguarde, o login já está em andamento.","Espera, el inicio de sesión ya está en curso."
+auth.error.no_account,No Google account found on this device. Add one in your phone settings.,Nenhuma conta Google encontrada neste aparelho. Adicione uma nas configurações do celular.,No se encontró ninguna cuenta de Google en este dispositivo. Agrega una en los ajustes del teléfono.
+auth.error.disabled,This account has been disabled.,Esta conta foi desativada.,Esta cuenta ha sido desactivada.
+auth.error.session_expired,Your session has expired. Please sign in again.,Sua sessão expirou. Entre novamente.,Tu sesión expiró. Vuelve a iniciar sesión.
+auth.error.relogin,"For your security, please sign in again to continue.","Por segurança, entre novamente para continuar.","Por seguridad, vuelve a iniciar sesión para continuar."
+auth.error.too_many,Too many attempts. Please wait a moment and try again.,Muitas tentativas. Aguarde um pouco e tente de novo.,Demasiados intentos. Espera un momento e inténtalo de nuevo.
+auth.error.wrong_account,Please choose the same account you are signed in with.,Escolha a mesma conta com que você entrou.,Elige la misma cuenta con la que iniciaste sesión.
+auth.error.delete_failed,The account could not be deleted. Please try again.,Não foi possível excluir a conta. Tente de novo.,No se pudo eliminar la cuenta. Inténtalo de nuevo.
+auth.error.not_signed_in,You are not signed in.,Você não está conectado.,No has iniciado sesión.
+auth.provider.google,Google,Google,Google
+auth.provider.apple,Apple,Apple,Apple
+auth.signin_google,Sign in with Google,Fazer login com o Google,Iniciar sesión con Google
+auth.signin_apple,Sign in with Apple,Iniciar sessão com a Apple,Iniciar sesión con Apple
+auth.signing_in,Signing in...,Entrando...,Iniciando sesión...
+auth.signed_in_as,Signed in as {0},Conectado como {0},Sesión iniciada como {0}
+auth.signed_in_with,Signed in with {0},Conectado com {0},Sesión iniciada con {0}
+auth.guest,Guest,Convidado,Invitado
+auth.sign_out,Sign out,Sair,Cerrar sesión
+auth.delete_account,Delete account,Excluir conta,Eliminar cuenta
+auth.delete_confirm,Delete your account and your cloud save? Your progress stays on this device.,Excluir sua conta e o salvamento na nuvem? Seu progresso continua neste aparelho.,¿Eliminar tu cuenta y tu guardado en la nube? Tu progreso se queda en este dispositivo.
+auth.deleted,Your account was deleted.,Sua conta foi excluída.,Tu cuenta fue eliminada.
+auth.mock_notice,Test mode: simulated sign-in (Editor).,Modo de teste: login simulado (Editor).,Modo de prueba: inicio de sesión simulado (Editor).
+auth.login_benefit,Sign in to save your progress in the cloud and play on any device.,Entre para salvar seu progresso na nuvem e jogar em qualquer aparelho.,Inicia sesión para guardar tu progreso en la nube y jugar en cualquier dispositivo.
+cloud.state.disabled,Not signed in,Não conectado,Sin conectar
+cloud.state.idle,Waiting to sync,Aguardando sincronização,Esperando sincronización
+cloud.state.syncing,Syncing...,Sincronizando...,Sincronizando...
+cloud.state.synced,Progress saved in the cloud,Progresso salvo na nuvem,Progreso guardado en la nube
+cloud.state.error,Sync failed. We'll try again soon.,Falha na sincronização. Tentaremos de novo em breve.,Error de sincronización. Lo intentaremos de nuevo pronto.
+cloud.restored,Welcome back! Your progress was restored from the cloud.,Que bom te ver de volta! Seu progresso foi restaurado da nuvem.,¡Bienvenido de nuevo! Tu progreso se restauró desde la nube.
+cloud.kept_local,Signed in! Your progress on this device was saved to the cloud.,Login feito! Seu progresso deste aparelho foi salvo na nuvem.,¡Sesión iniciada! Tu progreso de este dispositivo se guardó en la nube.
+cloud.last_sync,Last sync: {0},Última sincronização: {0},Última sincronización: {0}
+cloud.never_synced,Not synced yet,Ainda não sincronizado,Aún sin sincronizar
+cloud.sync_now,Sync now,Sincronizar agora,Sincronizar ahora
+cloud.error.network,No internet connection. Your progress will be saved to the cloud later.,Sem internet. Seu progresso será salvo na nuvem mais tarde.,Sin internet. Tu progreso se guardará en la nube más tarde.
+cloud.error.auth,Your session needs to be renewed. Please sign in again.,Sua sessão precisa ser renovada. Entre novamente.,Tu sesión debe renovarse. Vuelve a iniciar sesión.
+cloud.error.denied,The cloud refused the save. Please contact support.,A nuvem recusou o salvamento. Fale com o suporte.,La nube rechazó el guardado. Comunícate con soporte.
+cloud.error.failed,Could not reach the cloud. We'll try again soon.,Não foi possível acessar a nuvem. Tentaremos de novo em breve.,No se pudo acceder a la nube. Lo intentaremos de nuevo pronto.
+cloud.error.update_app,Your cloud save comes from a newer version of the game. Update the app to keep syncing.,Seu salvamento na nuvem é de uma versão mais nova do jogo. Atualize o app para continuar sincronizando.,Tu guardado en la nube es de una versión más nueva del juego. Actualiza la app para seguir sincronizando.
+lb.you,You,Você,Tú
+lb.player,Player,Jogador,Jugador
+lb.weekly,Weekly contest,Torneio semanal,Torneo semanal
+lb.global,Global,Global,Global
+lb.ends_in,Ends in {0},Termina em {0},Termina en {0}
+lb.offline,Offline ranking. Sign in to see the real world ranking.,Ranking offline. Entre para ver o ranking mundial real.,Ranking sin conexión. Inicia sesión para ver el ranking mundial real.
+lb.rank_unknown,50+,50+,50+
+lb.country.br,Brazil,Brasil,Brasil
+lb.country.mx,Mexico,México,México
+lb.country.ar,Argentina,Argentina,Argentina
+lb.country.co,Colombia,Colômbia,Colombia
+lb.country.es,Spain,Espanha,España
+lb.country.pt,Portugal,Portugal,Portugal
+lb.country.it,Italy,Itália,Italia
+lb.country.fr,France,França,Francia
+lb.country.de,Germany,Alemanha,Alemania
+lb.country.us,United States,Estados Unidos,Estados Unidos
+lb.country.gb,United Kingdom,Reino Unido,Reino Unido
+lb.country.jp,Japan,Japão,Japón
+lb.country.cn,China,China,China
+lb.country.kr,South Korea,Coreia do Sul,Corea del Sur
+lb.country.in,India,Índia,India
+lb.country.tr,Turkey,Turquia,Turquía
+lb.country.nl,Netherlands,Holanda,Países Bajos
+lb.country.ca,Canada,Canadá,Canadá
+lb.country.au,Australia,Austrália,Australia
+lb.country.ph,Philippines,Filipinas,Filipinas
+lb.country.id,Indonesia,Indonésia,Indonesia
+lb.country.cl,Chile,Chile,Chile
+lb.country.pe,Peru,Peru,Perú
+ads.test_badge,Ad (test),Anúncio (teste),Anuncio (prueba)
+ads.badge,Ad,Anúncio,Anuncio
+ads.rewarded_title,Rewarded video,Vídeo premiado,Video con recompensa
+ads.interstitial_title,Advertisement,Publicidade,Publicidad
+ads.skip,Skip,Pular,Omitir
+ads.skip_no_reward,Skipping the video gives no reward.,Pular o vídeo não dá recompensa.,Omitir el video no da recompensa.
+ads.banner_test,Test banner ad,Banner de teste,Banner de prueba
+ads.loading,Loading video,Carregando vídeo,Cargando video
+ads.cancel,Cancel,Cancelar,Cancelar
+ads.unavailable,No video available right now.\nPlease try again later.,Nenhum vídeo disponível agora.\nTente de novo mais tarde.,No hay videos disponibles ahora.\nInténtalo más tarde.
+ads.watch_to_end,Watch the whole video to get the reward.,Assista ao vídeo inteiro para ganhar a recompensa.,Mira el video completo para obtener la recompensa.
+ads.privacy_options,Privacy options,Opções de privacidade,Opciones de privacidad
+ads.placement.continue,Continue (+60 s),Continuar (+60 s),Continuar (+60 s)
+ads.placement.double_coins,Double coins,Moedas em dobro,Monedas dobles
+ads.placement.extra_heart,+1 life,+1 vida,+1 vida
+ads.placement.extra_spin,Extra spin,Giro extra,Giro extra
+ads.placement.shop_coins,Free coins,Moedas grátis,Monedas gratis
+ads.placement.unlock_shelf,Unlock the shelf,Desbloquear a prateleira,Desbloquear el estante

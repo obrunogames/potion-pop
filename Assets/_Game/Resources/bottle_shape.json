@@ -1,0 +1,21 @@
+{
+  "about": "Parametric potion bottle shared by Tools/process_art.py (draws the glass sprites) and Scripts/Game/Board/BottleShape.cs (pours the liquid). Shape units: the inner body width is 1.0; y = 0 is the inner bottom, y grows upward; x = 0 is the vertical axis. The 'sprite' block is (re)written by process_art.py.",
+  "innerWidth": 1.0,
+  "bottomRadius": 0.34,
+  "bodyHeight": 2.62,
+  "shoulderHeight": 0.30,
+  "neckWidth": 0.56,
+  "neckHeight": 0.30,
+  "lipWidth": 0.82,
+  "lipHeight": 0.15,
+  "glass": 0.075,
+  "fillHeight": 2.48,
+  "capacity": 4,
+  "sprite": {
+    "pixelsPerUnit": 160,
+    "width": 0,
+    "height": 0,
+    "originX": 0,
+    "originY": 0
+  }
+}

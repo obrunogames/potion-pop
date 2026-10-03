@@ -1,0 +1,81 @@
+rules_version = '2';
+
+// Potion Pop! — Cloud Firestore security rules.
+//
+// players/{uid}     = { save: string (PlayerData JSON), level: int, stars: int, name: string, avatar: string,
+//                       updatedAt: int (unix seconds) }                      → PRIVATE: only the owner reads/writes.
+// leaderboard/{uid} = { name: string, avatar: string, stars: int, level: int, updatedAt: int }
+//                                                                           → PUBLIC to signed-in players (global ranking).
+// reports/{id}      = { reporter: string (author's uid), target: string (reported uid), name: string (reported name),
+//                       createdAt: int (unix seconds) }                     → CREATE-ONLY: a signed-in player files a
+//                                                                             report on a ranking name (App Store 1.2);
+//                                                                             reviewed in the Firebase console only.
+// * The ranking never exposes anyone's save: it reads only the leaderboard collection.
+// * Only the owner can create/replace/delete their own documents, and writes must have the expected shape.
+// * Reports can't be read, changed or deleted from the app, and nobody can file one in someone else's name.
+// Everything else is denied.
+//
+// Deploy: Firebase console > Firestore Database > Rules (paste + Publish), or `firebase deploy --only firestore:rules`.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function validPlayer(d) {
+      return d.keys().hasOnly(['save', 'level', 'stars', 'name', 'avatar', 'updatedAt'])
+          && d.keys().hasAll(['save', 'level', 'stars', 'updatedAt'])
+          && d.save is string && d.save.size() > 1 && d.save.size() <= 200000
+          && d.level is int && d.level >= 1 && d.level <= 1000000
+          && d.stars is int && d.stars >= 0 && d.stars <= 1000000000
+          && d.updatedAt is int && d.updatedAt >= 0
+          && (!('name' in d) || (d.name is string && d.name.size() <= 24))
+          && (!('avatar' in d) || (d.avatar is string && d.avatar.size() <= 32));
+    }
+
+    function validRankingRow(d) {
+      return d.keys().hasOnly(['level', 'stars', 'name', 'avatar', 'updatedAt'])
+          && d.keys().hasAll(['level', 'stars', 'updatedAt'])
+          && d.level is int && d.level >= 1 && d.level <= 1000000
+          && d.stars is int && d.stars >= 0 && d.stars <= 1000000000
+          && d.updatedAt is int && d.updatedAt >= 0
+          && (!('name' in d) || (d.name is string && d.name.size() <= 24))
+          && (!('avatar' in d) || (d.avatar is string && d.avatar.size() <= 32));
+    }
+
+    function validReport(d) {
+      return d.keys().hasOnly(['reporter', 'target', 'name', 'createdAt'])
+          && d.keys().hasAll(['reporter', 'target', 'name', 'createdAt'])
+          && d.reporter is string && d.reporter.size() <= 128
+          && d.target is string && d.target.size() > 0 && d.target.size() <= 128
+          && d.name is string && d.name.size() <= 24
+          && d.createdAt is int && d.createdAt >= 0;
+    }
+
+    match /players/{uid} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validPlayer(request.resource.data);
+      allow delete: if isOwner(uid);
+    }
+
+    match /leaderboard/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(uid) && validRankingRow(request.resource.data);
+      allow delete: if isOwner(uid);
+    }
+
+    match /reports/{id} {
+      allow create: if signedIn() && request.resource.data.reporter == request.auth.uid
+                    && validReport(request.resource.data);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

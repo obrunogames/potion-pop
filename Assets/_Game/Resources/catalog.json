@@ -1,0 +1,99 @@
+{
+  "areas": [
+    {
+      "id": "grocery",
+      "index": 0,
+      "accent": "#2ED6A1",
+      "products": [
+        "soda_orange",
+        "soda_lime",
+        "cola_bottle",
+        "water_bottle",
+        "milk_carton",
+        "juice_strawberry",
+        "ketchup",
+        "mustard",
+        "honey_jar",
+        "jam_jar",
+        "cereal_box",
+        "chips_bag"
+      ]
+    },
+    {
+      "id": "sweets",
+      "index": 1,
+      "accent": "#FF7EB6",
+      "products": [
+        "cupcake",
+        "donut",
+        "macarons",
+        "lollipop",
+        "gummy_jar",
+        "chocolate_bar",
+        "cookie_jar",
+        "ice_cream",
+        "croissant",
+        "cake_slice",
+        "milkshake",
+        "cotton_candy"
+      ]
+    },
+    {
+      "id": "toys",
+      "index": 2,
+      "accent": "#4FB3FF",
+      "products": [
+        "teddy_bear",
+        "rubber_duck",
+        "bunny_plush",
+        "toy_rocket",
+        "robot_toy",
+        "dino_toy",
+        "toy_car",
+        "beach_ball",
+        "puzzle_cube",
+        "frog_plush",
+        "toy_train",
+        "spinning_top"
+      ]
+    },
+    {
+      "id": "beauty",
+      "index": 3,
+      "accent": "#A98BFF",
+      "products": [
+        "lipstick",
+        "nail_polish",
+        "perfume",
+        "shampoo",
+        "lotion_pump",
+        "face_cream",
+        "hand_mirror",
+        "hair_brush",
+        "toothpaste",
+        "sunscreen",
+        "makeup_compact",
+        "body_mist"
+      ]
+    },
+    {
+      "id": "fresh",
+      "index": 4,
+      "accent": "#FFA94D",
+      "products": [
+        "apple",
+        "pineapple",
+        "avocado",
+        "banana",
+        "strawberry_basket",
+        "carrots",
+        "broccoli",
+        "eggplant",
+        "grapes",
+        "watermelon",
+        "peach",
+        "corn"
+      ]
+    }
+  ]
+}
