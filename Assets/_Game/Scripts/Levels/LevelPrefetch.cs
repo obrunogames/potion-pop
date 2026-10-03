@@ -53,6 +53,25 @@ namespace PotionPop.Levels
             catch (Exception) { return null; }
         }
 
+        /// <summary>
+        /// Non-blocking and non-consuming: the definition of <paramref name="level"/> if it was prefetched and is ready
+        /// (Level Start popup / level map show the star goal and the level's features without stalling).
+        /// </summary>
+        public static bool TryPeek(int level, out LevelDefinition def)
+        {
+            def = null;
+            Task<LevelDefinition> task;
+            lock (Gate)
+            {
+                if (_level != level || _task == null) return false;
+                task = _task;
+            }
+            if (!task.IsCompleted || task.IsFaulted || task.IsCanceled) return false;
+            try { def = task.Result; }
+            catch (Exception) { def = null; }
+            return def != null;
+        }
+
         /// <summary>Drops any pending result (e.g. after a debug level jump).</summary>
         public static void Clear()
         {
