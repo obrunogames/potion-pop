@@ -109,7 +109,8 @@ namespace PotionPop.Game
             {
                 bool ad = _o.adContinue;
                 float bw = ad ? (w - DS.Space.M) * 0.5f : Mathf.Min(w, 720f);
-                _coinsButton = UIKit.Button(content, Loc.T("game.no_moves.add_bottle"), ButtonColor.Green, new Vector2(bw, ContinueH), OnContinueCoins, "booster_bottle");
+                // Compact label ("+1" next to the bottle icon) so the coin price always fits in the half-width button.
+                _coinsButton = UIKit.Button(content, Loc.T("game.no_moves.plus_one"), ButtonColor.Green, new Vector2(bw, ContinueH), OnContinueCoins, "booster_bottle");
                 _coinsButton.SetPrice(Progress.ContinuePrice);
                 GameUI.PlaceTop((RectTransform)_coinsButton.transform, y, new Vector2(bw, ContinueH), ad ? -(bw + DS.Space.M) * 0.5f : 0f);
                 GameUI.PopInDelayed(_coinsButton.transform, 0.35f);
@@ -167,9 +168,9 @@ namespace PotionPop.Game
             var name = UIKit.LocText(card, Economy.BoosterNameKey(type), TextStyle.Body, new Vector2(size.x - 24f, 56f));
             DS.Apply(name, TextStyle.Body, 36f);
             GameUI.PlaceTop(name.rectTransform, 22f + tileS + 8f, new Vector2(size.x - 24f, 56f));
-            string descKey = locked ? Economy.BoosterDescKey(type)
-                : !helps ? (type == BoosterType.Undo ? "game.nothing_to_undo" : "game.bottle_max")
-                : Economy.BoosterDescKey(type);
+            // Short descriptions: the cards are a third of the popup wide (the long booster.*.desc texts don't fit).
+            string descKey = !locked && !helps ? (type == BoosterType.Undo ? "game.no_moves.undo_none" : "game.no_moves.bottle_max")
+                : "game.no_moves.desc_" + Economy.BoosterId(type);
             var desc = UIKit.LocText(card, descKey, TextStyle.Small, new Vector2(size.x - 30f, 110f));
             DS.Apply(desc, TextStyle.Small, 28f);
             GameUI.PlaceTop(desc.rectTransform, 22f + tileS + 8f + 56f, new Vector2(size.x - 30f, 110f));

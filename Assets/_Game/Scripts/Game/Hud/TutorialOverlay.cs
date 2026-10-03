@@ -27,6 +27,8 @@ namespace PotionPop.Game
         public RectTransform Root { get; private set; }
         public bool HandVisible => _mode != HandMode.None;
         public bool BubbleVisible => _bubble != null && _bubble.gameObject.activeSelf;
+        /// <summary>A timed tip (auto-hides) is showing — the session dismisses it as soon as the player starts playing.</summary>
+        public bool TimedTipVisible => BubbleVisible && _autoHideBubble > 0f;
 
         RectTransform _hand;
         Image _handImage;

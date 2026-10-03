@@ -213,6 +213,9 @@ namespace PotionPop.Game
             }
         }
 
+        void OnEnable() => Loc.OnLanguageChanged += RefreshGoalText;
+        void OnDisable() => Loc.OnLanguageChanged -= RefreshGoalText;
+
         void RefreshGoalText()
         {
             if (_goal == null) return;

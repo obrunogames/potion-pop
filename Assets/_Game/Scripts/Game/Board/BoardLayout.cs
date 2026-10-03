@@ -14,7 +14,7 @@ namespace PotionPop.Game.Board
         public const int MaxRows = 3;
         public const int MaxPerRow = 7;
         /// <summary>Free space between neighbours (fraction of the glass width).</summary>
-        public const float GapX = 0.42f;
+        public const float GapX = 0.32f;
         /// <summary>Free space between rows (fraction of the glass height): lift + breathing room.</summary>
         public const float RowGap = 0.28f;
         /// <summary>Room above the top row (fraction of the glass height): lift + glow.</summary>
@@ -22,7 +22,7 @@ namespace PotionPop.Game.Board
         /// <summary>Room below the bottom row (fraction of the glass height): shelf plank + brackets + shadow.</summary>
         public const float FootRoom = 0.13f;
         /// <summary>Side margin (fraction of the glass width) on each side of the widest row.</summary>
-        public const float SideMargin = 0.14f;
+        public const float SideMargin = 0.06f;
         public const float MaxScale = 1.45f;
         public const float MinScale = 0.05f;
         /// <summary>A layout with more rows must give bottles this much bigger to be preferred.</summary>
