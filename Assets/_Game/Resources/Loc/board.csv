@@ -1,3 +1,8 @@
 key,en,pt,es
-board.unlock,Unlock,Abrir,Abrir
-board.unlocked,Unlocked!,Desbloqueado!,¡Desbloqueado!
+board.invalid.wrong_color,"Pour onto the same color, or into an empty bottle!",Despeje sobre a mesma cor ou numa garrafa vazia!,¡Vierte sobre el mismo color o en una botella vacía!
+board.invalid.full,That bottle is full!,Essa garrafa está cheia!,¡Esa botella está llena!
+board.invalid.done,That bottle is already complete!,Essa garrafa já está completa!,¡Esa botella ya está completa!
+board.invalid.stone,That bottle is trapped in stone!,Essa garrafa está presa na pedra!,¡Esa botella está atrapada en la piedra!
+board.stone.title,Break the Stone?,Quebrar a Pedra?,¿Romper la Piedra?
+board.stone.message,Every bottle you complete cracks the stone: {0} to go! Or watch a short video to break it right now.,Cada garrafa completa racha a pedra: faltam {0}! Ou assista a um vídeo curto para quebrá-la agora.,Cada botella que completas agrieta la piedra: ¡faltan {0}! O mira un video corto para romperla ahora mismo.
+board.stone.break,Break it!,Quebrar!,¡Romperla!

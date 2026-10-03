@@ -175,11 +175,14 @@ namespace PotionPop
             _sfxStartTime[index] = now;
         }
 
+        /// <summary>Major-scale steps (do re mi fa sol; ≤ +60% so the clip never aliases) so a chain of completed bottles climbs a melody.</summary>
+        static readonly float[] ComboPitches = { 1f, 1.1225f, 1.2599f, 1.3348f, 1.4983f };
+
         /// <summary>Bottle-complete sound with pitch rising per combo step (combo 1 = base pitch).</summary>
         public static void PlayCombo(int combo)
         {
-            float pitch = Mathf.Min(1.6f, 1f + 0.07f * (Mathf.Max(1, combo) - 1));
-            Play(Sfx.Complete, 1f, pitch);
+            int step = Mathf.Clamp(combo - 1, 0, ComboPitches.Length - 1);
+            Play(Sfx.Complete, 1f, ComboPitches[step]);
         }
 
         public static void PlayMusic(Music music, float fadeSeconds = 0.6f)

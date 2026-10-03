@@ -1,27 +1,33 @@
 key,en,pt,es
-game.plus_seconds,+{0}s,+{0}s,+{0}s
-game.combo_mult,x{0},x{0},x{0}
 game.combo,Combo x{0},Combo x{0},Combo x{0}
 game.praise.good,Good!,Boa!,¡Bien!
 game.praise.great,Great!,Ótimo!,¡Genial!
 game.praise.amazing,Amazing!,Incrível!,¡Increíble!
 game.praise.fantastic,Fantastic!,Fantástico!,¡Fantástico!
 game.level_complete,Level Complete!,Fase Concluída!,¡Nivel Completado!
-game.hammer_hint,Tap an item to smash it!,Toque em um item para esmagá-lo!,¡Toca un artículo para aplastarlo!
-game.nothing_to_smash,Nothing to smash right now!,Nada para esmagar agora!,¡No hay nada que aplastar ahora!
-game.nothing_to_pop,Nothing to pop right now!,Nada para estourar agora!,¡No hay nada que reventar ahora!
-game.freeze_active,Time is already frozen!,O tempo já está congelado!,¡El tiempo ya está congelado!
-game.nothing_to_shuffle,Nothing to shuffle right now!,Nada para embaralhar agora!,¡No hay nada que mezclar ahora!
-game.tutorial.drag,Drag 3 identical items into the same shelf!,Arraste 3 itens iguais para a mesma prateleira!,¡Arrastra 3 artículos iguales al mismo estante!
-game.tutorial.great,Great job! Keep matching!,Mandou bem! Continue combinando!,¡Buen trabajo! ¡Sigue combinando!
-game.tutorial.layers,"When a shelf front is empty, the items behind move forward!","Quando a frente de uma prateleira esvazia, os itens de trás vêm para a frente!","¡Cuando el frente de un estante se vacía, los artículos de atrás pasan al frente!"
+game.hud.goal,Max {0},Até {0},Máx. {0}
+game.nothing_to_undo,Nothing to undo yet!,Ainda não há nada para desfazer!,¡Todavía no hay nada que deshacer!
+game.bottle_max,No more extra bottles in this level!,Não dá para colocar mais garrafas nesta fase!,¡No puedes agregar más botellas en este nivel!
+game.nothing_to_remove,Nothing to remove right now!,Nada para tirar agora!,¡No hay nada que quitar ahora!
+game.shuffle_no_help,A shuffle won't help right now!,Embaralhar não vai ajudar agora!,¡Mezclar no ayudará ahora!
+game.dead_end.undo_bottle,No way out from here — try Undo or an Extra Bottle!,Não tem saída daqui — tente Desfazer ou uma Garrafa Extra!,No hay salida desde aquí: ¡prueba Deshacer o una Botella Extra!
+game.dead_end.undo,No way out from here — try Undo!,Não tem saída daqui — tente Desfazer!,No hay salida desde aquí: ¡prueba Deshacer!
+game.dead_end.bottle,No way out from here — try an Extra Bottle!,Não tem saída daqui — tente uma Garrafa Extra!,No hay salida desde aquí: ¡prueba una Botella Extra!
+game.dead_end.restart,No way out from here — restart from the pause menu.,Não tem saída daqui — reinicie pelo menu de pausa.,No hay salida desde aquí: reinicia desde el menú de pausa.
+game.tutorial.tap,"Tap a bottle to pick it up, then tap another bottle to pour!",Toque em uma garrafa para pegá-la e depois em outra para despejar!,¡Toca una botella para tomarla y luego toca otra para verter!
+game.tutorial.same_color,You can pour onto the same color or into an empty bottle.,Você pode despejar sobre a mesma cor ou numa garrafa vazia.,Puedes verter sobre el mismo color o en una botella vacía.
+game.tutorial.cork,A bottle full of one color gets a cork! Sort them all to win.,Garrafa cheia de uma cor só ganha uma rolha! Organize todas para vencer.,¡Una botella llena de un solo color recibe un corcho! Ordénalas todas para ganar.
+game.tutorial.rules,Sort the potions so that each bottle holds a single color!,Organize as poções para que cada garrafa fique com uma cor só!,¡Ordena las pociones para que cada botella tenga un solo color!
+game.tutorial.hidden,"Mystery potions! A ""?"" color shows up when the liquid above it is poured away.","Poções misteriosas! A cor ""?"" aparece quando o líquido de cima é despejado.","¡Pociones misteriosas! El color ""?"" aparece cuando viertes el líquido de arriba."
+game.tutorial.stones,Stone bottles! Every bottle you complete cracks the stone — or tap it to break it now.,Garrafas de pedra! Cada garrafa completa racha a pedra — ou toque nela para quebrar agora.,¡Botellas de piedra! Cada botella que completas agrieta la piedra; o tócala para romperla ya.
 game.booster_intro.title,New Booster!,Novo Reforço!,¡Nuevo Potenciador!
 game.booster_intro.ok,Got it!,Entendi!,¡Entendido!
 game.pause.title,Paused,Pausado,Pausa
 game.pause.music,Music,Música,Música
 game.pause.sound,Sound,Som,Sonido
 game.pause.vibration,Vibration,Vibração,Vibración
-game.pause.heart_hint,Restarting or quitting costs a life.,Reiniciar ou sair custa uma vida.,Reiniciar o salir cuesta una vida.
+game.pause.heart_hint,Restarting or quitting now costs a life.,Reiniciar ou sair agora custa uma vida.,Reiniciar o salir ahora cuesta una vida.
+game.pause.free_hint,You haven't poured yet: restarting is free!,Você ainda não despejou nada: reiniciar é grátis!,Aún no has vertido nada: ¡reiniciar es gratis!
 game.resume,Resume,Continuar,Continuar
 game.restart.title,Restart level?,Reiniciar fase?,¿Reiniciar nivel?
 game.quit.title,Quit level?,Sair da fase?,¿Salir del nivel?
@@ -29,20 +35,20 @@ game.leave.life,You will lose a life.,Você vai perder uma vida.,Perderás una v
 game.leave.life_streak,You will lose a life and your win streak.,Você vai perder uma vida e sua sequência de vitórias.,Perderás una vida y tu racha de victorias.
 game.leave.streak,You will lose your win streak.,Você vai perder sua sequência de vitórias.,Perderás tu racha de victorias.
 game.leave.free,Your progress in this level will be lost.,Seu progresso nesta fase será perdido.,Perderás tu progreso en este nivel.
-game.out_of_time.title,Out of Time!,Acabou o Tempo!,¡Se Acabó el Tiempo!
-game.out_of_time.message,So close! Keep playing with {0} more seconds?,Quase lá! Continuar com mais {0} segundos?,¡Casi lo logras! ¿Seguir jugando con {0} segundos más?
-game.no_space.title,No Space!,Sem Espaço!,¡Sin Espacio!
-game.no_space.message,The shelves are full! Use a booster to make room.,As prateleiras estão cheias! Use um reforço para abrir espaço.,¡Los estantes están llenos! Usa un potenciador para hacer espacio.
-game.no_space.shuffle_no_help,Won't help,Não ajuda,No ayuda
-game.no_space.unlock_ad,Unlock a shelf,Desbloquear prateleira,Desbloquear estante
+game.no_moves.title,No More Moves!,Sem Jogadas!,¡Sin Movimientos!
+game.no_moves.message,You're stuck! Pick a way out:,Você travou! Escolha uma saída:,¡Te atascaste! Elige una salida:
+game.no_moves.add_bottle,+1 Bottle,+1 Garrafa,+1 Botella
+game.no_moves.break_stone,Break a stone,Quebrar uma pedra,Romper una piedra
 game.use,Use,Usar,Usar
 game.failed.title,Level Failed,Fase Perdida,Nivel Fallido
 game.failed.infinite,Unlimited lives: no life lost!,Vidas infinitas: nenhuma vida perdida!,Vidas infinitas: ¡no perdiste ninguna vida!
-game.failed.streak_lost,Your win streak of {0} is gone!,Sua sequência de vitórias ({0}) acabou!,¡Perdiste tu racha de victorias ({0})!
+game.failed.streak_lost,Your win streak of {0} is gone!,Sua sequência de {0} vitórias acabou!,¡Perdiste tu racha de {0} victorias!
 game.failed.minus_heart,-1,-1,-1
 game.home,Home,Início,Inicio
 game.complete.title,Well Done!,Muito Bem!,¡Muy Bien!
-game.complete.stars,Stars,Estrelas,Estrellas
+game.complete.moves,Solved in {0} moves,Resolvido em {0} jogadas,Resuelto en {0} movimientos
+game.complete.goal3,3 stars: finish in {0} moves or fewer,3 estrelas: termine em até {0} jogadas,3 estrellas: termina en {0} movimientos o menos
+game.complete.new_best,New best!,Novo recorde!,¡Nuevo récord!
 game.complete.double,x2,x2,x2
 game.complete.streak,Win streak: {0},Sequência de vitórias: {0},Racha de victorias: {0}
 game.complete.chest_ready,Chest ready! Open it at home,Baú pronto! Abra no Início,¡Cofre listo! Ábrelo en Inicio
