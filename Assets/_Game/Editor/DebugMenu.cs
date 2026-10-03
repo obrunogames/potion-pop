@@ -1,18 +1,24 @@
 using System;
 using System.IO;
 using System.Reflection;
+using PotionPop.Game;
+using PotionPop.Levels;
+using PotionPop.UI;
 using UnityEditor;
 using UnityEngine;
+using SessionState = PotionPop.Game.SessionState;
 
 namespace PotionPop.EditorTools
 {
     /// <summary>
     /// Developer cheats (menu Potion Pop/Debug/...). Save edits work in and out of Play Mode and are written to disk
-    /// immediately; clock and UI items need Play Mode (the runtime statics live there).
+    /// immediately; level / clock / UI items need Play Mode (the runtime statics live there).
     /// </summary>
     public static class DebugMenu
     {
         const string Root = "Potion Pop/Debug/";
+        const string Boosters = Root + "Boosters/";
+        const string LevelMenu = Root + "Level/";
         const int Priority = 200;
 
         // ------------------------------------------------------------------ economy
@@ -25,17 +31,60 @@ namespace PotionPop.EditorTools
             Persist("+5000 coins (now " + Economy.Coins + ")");
         }
 
-        [MenuItem(Root + "Give 5 Of Each Booster", priority = Priority + 1)]
+        [MenuItem(Root + "Zero Coins", priority = Priority + 1)]
+        public static void ZeroCoins()
+        {
+            SyncFromDisk();
+            Economy.AddCoins(-Economy.Coins, "debug");
+            Persist("coins set to 0");
+        }
+
+        // ------------------------------------------------------------------ boosters
+
+        [MenuItem(Boosters + "Give 5 Of Each", priority = Priority + 10)]
         public static void GiveBoosters()
         {
             SyncFromDisk();
-            foreach (BoosterType type in Enum.GetValues(typeof(BoosterType))) Economy.AddBooster(type, 5);
+            foreach (BoosterType type in Economy.AllBoosters) Economy.AddBooster(type, 5);
             Persist("+5 of each booster");
+        }
+
+        [MenuItem(Boosters + "Give 3 Undo", priority = Priority + 11)]
+        public static void GiveUndo() => Give(BoosterType.Undo);
+
+        [MenuItem(Boosters + "Give 3 Shuffle", priority = Priority + 12)]
+        public static void GiveShuffle() => Give(BoosterType.Shuffle);
+
+        [MenuItem(Boosters + "Give 3 Extra Bottle", priority = Priority + 13)]
+        public static void GiveBottle() => Give(BoosterType.Bottle);
+
+        [MenuItem(Boosters + "Give 3 Magic Wand", priority = Priority + 14)]
+        public static void GiveWand() => Give(BoosterType.Wand);
+
+        [MenuItem(Boosters + "Give 3 Rainbow Potion", priority = Priority + 15)]
+        public static void GiveRainbow() => Give(BoosterType.Rainbow);
+
+        [MenuItem(Boosters + "Give 3 Crystal Ball", priority = Priority + 16)]
+        public static void GiveCrystal() => Give(BoosterType.Crystal);
+
+        [MenuItem(Boosters + "Empty All Boosters", priority = Priority + 30)]
+        public static void EmptyBoosters()
+        {
+            SyncFromDisk();
+            foreach (BoosterType type in Economy.AllBoosters) Economy.AddBooster(type, -Economy.GetBooster(type));
+            Persist("every booster set to 0 (buy flows)");
+        }
+
+        static void Give(BoosterType type)
+        {
+            SyncFromDisk();
+            Economy.AddBooster(type, 3);
+            Persist("+3 " + type + " (now " + Economy.GetBooster(type) + ")");
         }
 
         // ------------------------------------------------------------------ hearts
 
-        [MenuItem(Root + "Refill Hearts", priority = Priority + 20)]
+        [MenuItem(Root + "Refill Hearts", priority = Priority + 40)]
         public static void RefillHearts()
         {
             SyncFromDisk();
@@ -43,7 +92,7 @@ namespace PotionPop.EditorTools
             Persist("hearts refilled (" + Lives.Hearts + ")");
         }
 
-        [MenuItem(Root + "Empty Hearts", priority = Priority + 21)]
+        [MenuItem(Root + "Empty Hearts", priority = Priority + 41)]
         public static void EmptyHearts()
         {
             SyncFromDisk();
@@ -55,7 +104,7 @@ namespace PotionPop.EditorTools
 
         // ------------------------------------------------------------------ progress
 
-        [MenuItem(Root + "Jump To Level...", priority = Priority + 40)]
+        [MenuItem(LevelMenu + "Jump To Level...", priority = Priority + 60)]
         public static void JumpToLevel()
         {
             SyncFromDisk();
@@ -63,19 +112,94 @@ namespace PotionPop.EditorTools
             {
                 SyncFromDisk();
                 Progress.SetLevel(level);
+                LevelPrefetch.Clear();
                 Persist("jumped to level " + level);
             });
         }
 
+        [MenuItem(LevelMenu + "Skip Level", priority = Priority + 61)]
+        public static void SkipLevel()
+        {
+            SyncFromDisk();
+            int level = Progress.CurrentLevel + 1;
+            Progress.SetLevel(level);
+            LevelPrefetch.Clear();
+            Persist("skipped to level " + level);
+        }
+
+        [MenuItem(LevelMenu + "Win Current Level (3 stars)", priority = Priority + 62)]
+        public static void WinLevel3() => WinLevel(3);
+
+        [MenuItem(LevelMenu + "Win Current Level (1 star)", priority = Priority + 63)]
+        public static void WinLevel1() => WinLevel(1);
+
+        [MenuItem(LevelMenu + "Fail Current Level", priority = Priority + 64)]
+        public static void FailLevel()
+        {
+            var s = PlayingSession();
+            if (s == null) return;
+            PopupManager.CloseAll(false);
+            s.Fail();
+            Debug.Log(EditorUtil.LogPrefix + "Debug: level " + s.Level + " failed");
+        }
+
+        [MenuItem(LevelMenu + "Show No Moves Popup", priority = Priority + 65)]
+        public static void NoMoves()
+        {
+            var s = PlayingSession();
+            if (s == null) return;
+            s.DebugNoMoves();
+        }
+
+        [MenuItem(LevelMenu + "Auto-play Current Level", priority = Priority + 66)]
+        public static void AutoPlay() => Debug.Log(EditorUtil.LogPrefix + QaTour.AutoPlay());
+
+        [MenuItem(LevelMenu + "Reset Tutorials", priority = Priority + 80)]
+        public static void ResetTutorials()
+        {
+            SyncFromDisk();
+            var d = SaveSystem.Data;
+            d.tutorialDone = false;
+            d.seenTutorials.Clear();
+            Persist("tutorials reset (level 1 hand, tips, booster intros)");
+        }
+
+        [MenuItem(LevelMenu + "Win Current Level (3 stars)", true)]
+        [MenuItem(LevelMenu + "Win Current Level (1 star)", true)]
+        [MenuItem(LevelMenu + "Fail Current Level", true)]
+        [MenuItem(LevelMenu + "Show No Moves Popup", true)]
+        [MenuItem(LevelMenu + "Auto-play Current Level", true)]
+        static bool IsInLevel() => EditorApplication.isPlaying && GameScreen.Instance != null && GameScreen.Instance.Session != null
+                                   && GameScreen.Instance.Session.State == SessionState.Playing;
+
+        static void WinLevel(int stars)
+        {
+            var s = PlayingSession();
+            if (s == null) return;
+            s.DebugWin(stars);
+            Debug.Log(EditorUtil.LogPrefix + "Debug: level " + s.Level + " won with " + stars + " star(s)");
+        }
+
+        static GameSession PlayingSession()
+        {
+            var s = GameScreen.Instance != null ? GameScreen.Instance.Session : null;
+            if (s == null || s.State != SessionState.Playing)
+            {
+                Debug.LogWarning(EditorUtil.LogPrefix + "No level is being played.");
+                return null;
+            }
+            return s;
+        }
+
         // ------------------------------------------------------------------ clock (Play Mode)
 
-        [MenuItem(Root + "Clock +1 Hour", priority = Priority + 60)]
+        [MenuItem(Root + "Clock +1 Hour", priority = Priority + 100)]
         public static void ClockPlusHour() => AdvanceClock(3600);
 
-        [MenuItem(Root + "Clock +1 Day", priority = Priority + 61)]
+        [MenuItem(Root + "Clock +1 Day", priority = Priority + 101)]
         public static void ClockPlusDay() => AdvanceClock(86400);
 
-        [MenuItem(Root + "Clock Reset", priority = Priority + 62)]
+        [MenuItem(Root + "Clock Reset", priority = Priority + 102)]
         public static void ClockReset()
         {
             TimeUtil.DebugOffsetSeconds = 0;
@@ -99,7 +223,7 @@ namespace PotionPop.EditorTools
 
         // ------------------------------------------------------------------ save
 
-        [MenuItem(Root + "Reset Save...", priority = Priority + 80)]
+        [MenuItem(Root + "Reset Save...", priority = Priority + 120)]
         public static void ResetSave()
         {
             if (!EditorUtility.DisplayDialog("Potion Pop", "Delete the local save (progress, coins, boosters, settings)?", "Delete", "Cancel"))
@@ -123,10 +247,11 @@ namespace PotionPop.EditorTools
             PlayerPrefs.DeleteKey(SaveSystem.BackupKey);
             PlayerPrefs.Save();
             SaveSystem.ResetAll();
+            LevelPrefetch.Clear();
             Debug.Log(EditorUtil.LogPrefix + "Save reset (" + file + "), new player id " + SaveSystem.Data.playerId + ".");
         }
 
-        [MenuItem(Root + "Delete All PlayerPrefs...", priority = Priority + 81)]
+        [MenuItem(Root + "Delete All PlayerPrefs...", priority = Priority + 121)]
         public static void DeletePlayerPrefs()
         {
             if (!EditorUtility.DisplayDialog("Potion Pop", "Delete ALL PlayerPrefs (save backup, sign-in session, ad counters)?", "Delete", "Cancel"))
@@ -136,12 +261,12 @@ namespace PotionPop.EditorTools
             Debug.Log(EditorUtil.LogPrefix + "PlayerPrefs deleted.");
         }
 
-        [MenuItem(Root + "Reveal Save Folder", priority = Priority + 82)]
+        [MenuItem(Root + "Reveal Save Folder", priority = Priority + 122)]
         public static void RevealSaveFolder() => EditorUtility.RevealInFinder(Application.persistentDataPath);
 
         // ------------------------------------------------------------------ UI (Play Mode)
 
-        [MenuItem(Root + "Open Design System Popup", priority = Priority + 100)]
+        [MenuItem(Root + "Open Design System Popup", priority = Priority + 140)]
         public static void OpenDesignSystemPopup()
         {
             var popupBase = EditorUtil.FindType("PotionPop.UI.Popup");
