@@ -124,6 +124,16 @@ namespace PotionPop.Game
             _idle = 0f;
             HideIdleHint();
             HideBoosterHand();
+            // A timed tip (rules / hidden colors / stones) may cover a row of bottles: playing dismisses it.
+            if (_v.tutorial != null && _v.tutorial.TimedTipVisible)
+            {
+                _v.tutorial.HideBubble();
+                if (_tipHandActive)
+                {
+                    _v.tutorial.HideHand();
+                    _tipHandActive = false;
+                }
+            }
             OnTutorialSelect(bottle);
         }
 

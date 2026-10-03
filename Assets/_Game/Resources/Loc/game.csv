@@ -53,3 +53,9 @@ game.complete.double,x2,x2,x2
 game.complete.streak,Win streak: {0},Sequência de vitórias: {0},Racha de victorias: {0}
 game.complete.chest_ready,Chest ready! Open it at home,Baú pronto! Abra no Início,¡Cofre listo! Ábrelo en Inicio
 game.complete.chest_progress,{0}/{1},{0}/{1},{0}/{1}
+game.no_moves.plus_one,+1,+1,+1
+game.no_moves.desc_undo,Take back a pour,Volta uma jogada,Deshace una jugada
+game.no_moves.desc_shuffle,Mix the colors,Mistura as cores,Mezcla los colores
+game.no_moves.desc_bottle,+1 empty bottle,+1 garrafa vazia,+1 botella vacía
+game.no_moves.undo_none,Nothing to undo,Nada para desfazer,Nada que deshacer
+game.no_moves.bottle_max,Limit reached,Limite atingido,Límite alcanzado

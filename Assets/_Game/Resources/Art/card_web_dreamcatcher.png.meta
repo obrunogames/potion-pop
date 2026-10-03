@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: dea89ede94b7142038186b5f10cdfe0e
+guid: 142373493c2fe4b57bffad7edc8a2ca3
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 2977003613389977218
-    second: store_sign_0
+      213: 2871944968090011439
+    second: card_web_dreamcatcher_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -48,11 +48,11 @@ TextureImporter:
   compressionQuality: 50
   spriteMode: 1
   spriteExtrude: 1
-  spriteMeshType: 0
+  spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 100
-  spriteBorder: {x: 343, y: 139, z: 343, w: 218}
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 0
   alphaUsage: 1
   alphaIsTransparency: 1
@@ -141,13 +141,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: store_sign_0
+      name: card_web_dreamcatcher_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 768
-        height: 372
+        width: 280
+        height: 384
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -156,8 +156,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 286f9277301705920800000000000000
-      internalID: 2977003613389977218
+      spriteID: f27c9757bb23bd720800000000000000
+      internalID: 2871944968090011439
       vertices: []
       indices: 
       edges: []
