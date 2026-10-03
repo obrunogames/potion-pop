@@ -1,29 +1,44 @@
 #!/usr/bin/env python3
 """Procedural audio for Potion Pop! — every sound is synthesized here (no samples).
 
-    uv run --with pillow --with numpy --with scipy python Tools/gen_audio.py [--only sfx|music|<name>]
+    uv run --with pillow --with numpy --with scipy python Tools/gen_audio.py [--only sfx|music|board|<name>] [--prune]
+                                                                              [--preview]
 
 SFX   -> Assets/_Game/Resources/Audio/sfx_<name>.wav   mono 16-bit 44.1 kHz, peak -1 dBFS, DC removed,
-         smooth attack/release (no clicks), short reverb. One file per value of PotionPop.Sfx (snake_case).
-MUSIC -> Assets/_Game/Resources/Audio/music_<name>.ogg stereo Vorbis q5, seamless loops (~38-44 s), about -16 LUFS.
-         Songs are written as chord progressions + melodies (note lists below), humanized, mixed with stereo width
-         and a convolution reverb. Seamless looping: the loop is rendered with an extra tail and the tail is folded
-         back onto the start, so the file is exactly periodic (what plays after the end is what the start expects).
+         smooth attack/release (no clicks), short reverb. One file per value of PotionPop.Sfx (snake_case); the list
+         below is checked against the enum in Assets/_Game/Scripts/Core/AudioManager.cs on every run.
+MUSIC -> Assets/_Game/Resources/Audio/music_<name>.ogg stereo Vorbis q5, seamless loops (~40 s), about -16 LUFS.
+         Songs are written as chord progressions + melodies (note lists below), humanized, mixed stem by stem with
+         stereo panning and a convolution reverb. Seamless looping: the loop is rendered with an extra tail and the
+         tail is folded back onto the start, so the file is exactly periodic (what plays after the end is what the
+         start expects).
+
+--prune    deletes sfx_*.wav / music_*.ogg in Audio/ that no enum value uses (and their .meta files).
+--preview  writes waveform + spectrogram sheets of the board sounds to ArtSource/preview/ (gitignored scratch).
+
+Report columns: LUFS = integrated loudness (whole clip if < 0.4 s); Mmax = loudest 400 ms momentary loudness, the
+fairest way to compare one-shots of different lengths (all SFX peak at -1 dBFS, so their relative loudness is set by
+the design itself: the frequent board sounds sit around -17..-20, rewards/UI around -9..-14); >300Hz = what a phone
+speaker reproduces. Re-running is deterministic (WAVs byte-identical; OGGs differ only by the Ogg stream serial).
 
 Vorbis encoding uses ffmpeg with libvorbis when available (/opt/homebrew/bin/ffmpeg or PATH); otherwise libsndfile's
 libvorbis through the `soundfile` package at the same quality (q5), installed on the fly with `uv run --with soundfile`
 if needed (ffmpeg's built-in "vorbis" encoder is experimental and is never used).
 
-Style: cute, glossy, candy-like — soft bubbly pops, marimba / glockenspiel / kalimba-like modal plucks, sparkly
-chimes, warm whooshes from filtered noise.
+Style: glossy and magical — glass clinks, liquid streams and bubble pops for the potions; celesta, music box, harp,
+glockenspiel, bells and sparkles for the magic; pizzicato strings, soft flute and light percussion in the music.
+Board sounds play constantly, so they are short, tonal and soft-edged (no harsh noise, highs rolled off), and the
+ones whose pitch the code varies are low-passed so a +60 % pitch-up never aliases.
 """
 import argparse
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import zlib
 
 import numpy as np
 from scipy import signal
@@ -32,18 +47,25 @@ from scipy.ndimage import maximum_filter1d, minimum_filter1d, uniform_filter1d
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "Assets", "_Game", "Resources", "Audio")
+PREVIEW = os.path.join(ROOT, "ArtSource", "preview")
+ENUM_SRC = os.path.join(ROOT, "Assets", "_Game", "Scripts", "Core", "AudioManager.cs")
 SR = 44100
 SFX_PEAK_DB = -1.0
 MUSIC_LUFS = -16.0
 MUSIC_CEILING_DB = -1.5      # sample-peak ceiling before encoding (leaves room for codec overshoot)
 
-# Must match PotionPop.Sfx (Assets/_Game/Scripts/Core) in snake_case.
+# Must match PotionPop.Sfx (Assets/_Game/Scripts/Core/AudioManager.cs) in snake_case, same order.
 SFX_NAMES = [
-    "click", "popup_open", "popup_close", "pick", "drop", "invalid", "match", "combo", "star", "coin",
-    "layer_reveal", "unlock", "win", "lose", "timer_tick", "freeze", "hammer", "wand", "shuffle", "bomb",
-    "chest_open", "spin_tick", "spin_win", "reward", "heart", "whoosh", "card_flip", "toggle", "error",
-    "purchase", "pop", "sparkle", "countdown", "fanfare", "swoosh",
+    # UI / meta
+    "click", "popup_open", "popup_close", "toggle", "error", "purchase", "pop", "sparkle", "countdown", "fanfare",
+    "swoosh", "whoosh", "star", "coin", "reward", "heart", "card_flip", "chest_open", "spin_tick", "spin_win", "win",
+    "lose", "combo", "unlock",
+    # board (potion bottles)
+    "select", "deselect", "pour", "pour_end", "complete", "invalid", "reveal", "stone_crack", "stone_break", "undo",
+    "add_bottle", "wand", "shuffle", "crystal", "rainbow", "bubble",
 ]
+BOARD_SFX = ["select", "deselect", "pour", "pour_end", "complete", "invalid", "reveal", "stone_crack", "stone_break",
+             "undo", "add_bottle", "wand", "shuffle", "crystal", "rainbow", "bubble", "combo"]
 
 
 # ============================================================================================ basics
@@ -120,7 +142,7 @@ def exp_env(n, tau, attack=0.001):
 
 
 def adsr(n, a, d, s, r, gate):
-    """Linear-segment ADSR (seconds) over n samples, note-off at gate seconds."""
+    """Linear-attack ADSR (seconds) over n samples, note-off at gate seconds."""
     t = taxis(n)
     env = np.where(t < a, t / max(a, 1e-4), s + (1 - s) * np.exp(-(t - a) / max(d, 1e-4)))
     rel = t >= gate
@@ -130,10 +152,15 @@ def adsr(n, a, d, s, r, gate):
     return env
 
 
+def bell_curve(n, power=2.0):
+    """sin^power hump over n samples (0 at both ends)."""
+    return np.sin(np.pi * np.linspace(0, 1, n)) ** power
+
+
 # ============================================================================================ instruments
 
 def modal(f, ratios, amps, taus, length, attack=0.0015, rng=None, detune=0.0, phase_rand=True):
-    """Sum of exponentially decaying sine modes (mallet instruments, bells, tines)."""
+    """Sum of exponentially decaying sine modes (mallet instruments, bells, tines, glass)."""
     n = samples(length)
     t = taxis(n)
     out = np.zeros(n)
@@ -186,6 +213,104 @@ def kalimba(f, vel=1.0, rng=None, length=None):
     return x * vel
 
 
+def celesta(f, vel=1.0, rng=None, length=None, decay=None):
+    """Celesta: a steel bar over a wooden resonator struck by a felt hammer — round, sustained fundamental; the bar's
+    inharmonic partials (2.76, 5.40, 8.93) only flash as a short shiny 'ping' at the attack. `decay` caps the ring
+    time constant (a damped, tighter note for frequent sound effects)."""
+    tau1 = float(np.clip(1.05 * (523.0 / f) ** 0.5, 0.3, 1.8))
+    if decay:
+        tau1 = min(tau1, decay)
+    length = length or min(tau1 * 4.5, 3.5)
+    x = modal(f, [1.0, 2.0, 2.756, 5.404, 8.933], [1.0, 0.06, 0.32, 0.12, 0.04],
+              [tau1, tau1 * 0.3, 0.07, 0.035, 0.018], length, attack=0.0012, rng=rng)
+    m = samples(0.004)
+    x[:m] += mallet_noise(0.004, 4000, rng, tau=0.001) * 0.05
+    return x * vel
+
+
+def music_box(f, vel=1.0, rng=None, length=None):
+    """Music-box tine (steel cantilever, clamped-free modes 1 : 6.27 : 17.55): pure fundamental with a glassy
+    overtone that dies fast, a faint pin tick, and a sympathetic neighbour tine ~1 Hz off (the slow shimmer)."""
+    tau1 = float(np.clip(1.4 * (523.0 / f) ** 0.6, 0.35, 2.4))
+    length = length or min(tau1 * 4.5, 4.0)
+    hi = 1.0 / (1.0 + (f / 2200.0) ** 2)          # the 6.27x overtone fades out for the highest tines
+    x = modal(f, [1.0, 6.267, 17.55], [1.0, 0.5 * hi, 0.1 * hi], [tau1, tau1 / 7, tau1 / 25], length,
+              attack=0.0004, rng=rng)
+    x += 0.3 * modal(f + rng.uniform(0.7, 1.4), [1.0], [1.0], [tau1 * 1.1], length, attack=0.003, rng=rng)
+    m = samples(0.0025)
+    x[:m] += sos_filter(rng.standard_normal(m), "high", 5000) * exp_env(m, 0.0004, 0.0001) * 0.08
+    return x * vel
+
+
+def harp(f, vel=1.0, rng=None, length=None, pos=0.3, damp=None):
+    """Concert-harp pluck: harmonic partials with a mid-string pluck spectrum, highs decaying faster, a touch of
+    string stiffness, a soft fingertip onset; long natural ring (~2 s in the middle register). `damp` (s): the
+    harpist's hand stops the string there (so a chord change doesn't ring into the next harmony)."""
+    T0 = float(np.clip(1.9 * (262.0 / f) ** 0.55, 0.45, 3.6))
+    length = length or min(T0 * 3.2, 4.0)
+    if damp is not None:
+        length = min(length, damp + 0.45)
+    n = samples(length)
+    t = taxis(n)
+    K = int(max(1, min(16, 7500 // f)))
+    out = np.zeros(n)
+    for k in range(1, K + 1):
+        a = (abs(math.sin(math.pi * k * pos)) + 0.05) / k ** 1.6
+        tau = T0 / (1 + 0.5 * (k - 1) ** 1.2)
+        m = min(n, samples(tau * 7))
+        fk = f * k * math.sqrt(1 + 0.00008 * k * k)
+        part = a * np.exp(-t[:m] / tau) * np.sin(2 * np.pi * fk * t[:m] + rng.uniform(0, 2 * np.pi))
+        out[:m] += fade(part, 0, min(0.01, tau))
+    a_n = samples(0.0018)
+    out[:a_n] *= 0.5 - 0.5 * np.cos(np.linspace(0, np.pi, a_n))
+    if damp is not None:
+        out *= np.exp(-np.maximum(t - damp, 0.0) / 0.07)
+    return fade(out, 0, min(0.2, length * 0.25)) * vel
+
+
+def body_gain(fk, scale=1.0):
+    """Violin-family body response: air mode, main wood modes and the bridge hill (shifted down by `scale` for the
+    bigger instruments)."""
+    lf = math.log2(max(fk, 20.0))
+    g = 0.3
+    for fc, w, a in ((285.0, 0.28, 0.9), (520.0, 0.35, 0.65), (2600.0, 0.55, 0.5)):
+        g += a * math.exp(-0.5 * ((lf - math.log2(fc * scale)) / w) ** 2)
+    return g * fk / (fk + 200.0 * scale)
+
+
+def pizz(f, vel=1.0, rng=None, voices=3, tau=None, pos=0.24, spread=0.012, cents=6.0, body=1.0):
+    """Pizzicato string section: plucked harmonics through a body response, fast decay of the highs, a soft
+    fingertip onset; several players slightly out of time and tune (that's what makes it a section)."""
+    T0 = tau or float(np.clip(0.36 * (196.0 / f) ** 0.5, 0.1, 1.0))
+    length = T0 * 5.5 + spread
+    n = samples(length)
+    t = taxis(n)
+    K = int(max(1, min(18, 7000 // f)))
+    a_n = samples(0.0025)
+    out = np.zeros(n)
+    for _ in range(voices):
+        det = 2 ** (rng.normal(0, cents) / 1200.0) if voices > 1 else 1.0
+        d = samples(rng.uniform(0, spread)) if voices > 1 else 0
+        m = n - d
+        voice = np.zeros(m)
+        for k in range(1, K + 1):
+            fk = f * det * k
+            a = (abs(math.sin(math.pi * k * pos)) + 0.03) / k ** 1.25 * body_gain(fk, body)
+            tk = T0 / (1 + 0.85 * (k - 1))
+            mm = min(m, samples(tk * 8))
+            part = a * np.exp(-t[:mm] / tk) * np.sin(2 * np.pi * fk * t[:mm] + rng.uniform(0, 2 * np.pi))
+            voice[:mm] += fade(part, 0, min(0.008, tk))
+        voice[:a_n] *= 0.5 - 0.5 * np.cos(np.linspace(0, np.pi, a_n))
+        out[d:] += voice * rng.uniform(0.8, 1.0)
+    return fade(out, 0, 0.02) * vel / math.sqrt(voices)
+
+
+def pizz_bass(f, vel=1.0, rng=None):
+    """Cello / double-bass pizzicato: two players, longer ring, lower body resonances."""
+    T0 = float(np.clip(0.8 * (82.0 / f) ** 0.35, 0.35, 1.1))
+    return pizz(f, vel, rng, voices=2, tau=T0, pos=0.28, spread=0.005, cents=3.0, body=0.38)
+
+
 def bell(f, vel=1.0, rng=None, length=1.2, ratio=3.5, index=2.2):
     """FM bell: carrier + inharmonic modulator with decaying index (bright attack, pure tail)."""
     n = samples(length)
@@ -195,59 +320,63 @@ def bell(f, vel=1.0, rng=None, length=1.2, ratio=3.5, index=2.2):
     return fade(x, 0, min(0.15, length * 0.3)) * vel
 
 
-def uke(f, dur, vel=1.0, rng=None):
-    """Nylon-string pluck: additive harmonics with a pluck-position spectrum and frequency-dependent decay."""
-    ring = dur + 0.25
-    n = samples(ring)
+def glass(f, vel=1.0, rng=None, length=0.25, tau=0.08, bright=1.0, split=0.0035, tick=0.12):
+    """Glass tap: bending modes of a thin cylindrical shell (n = 2..5 -> 1 : 2.83 : 5.42 : 8.77), each a slightly
+    split degenerate pair (no bottle is perfectly round -> soft beating), upper modes decaying faster, plus a crisp
+    contact tick. `bright` < 1 gives a muted tap."""
+    ratios = [1.0, 2.828, 5.423, 8.77]
+    amps = [1.0, 0.42 * bright, 0.18 * bright, 0.07 * bright]
+    taus = [tau, tau * 0.5, tau * 0.28, tau * 0.16]
+    x = modal(f, ratios, amps, taus, length, attack=0.0005, rng=rng)
+    x += 0.55 * modal(f * (1 + split), ratios, amps, taus, length, attack=0.0005, rng=rng)
+    m = min(samples(0.004), len(x))
+    x[:m] += sos_filter(rng.standard_normal(m), "high", 2500) * exp_env(m, 0.0006, 0.0001) * tick * bright
+    return x * (vel / 1.55)
+
+
+def glass_harmonica(f, dur, vel=1.0, rng=None, attack=0.07, release=0.35, beat_hz=1.6):
+    """Rubbed-glass tone: nearly pure sine with a soft bowed attack; a twin ~1.6 Hz away makes it shimmer."""
+    n = samples(dur + release * 3)
     t = taxis(n)
-    K = int(min(24, 9000 // f))
-    out = np.zeros(n)
-    for k in range(1, K + 1):
-        a = abs(math.sin(math.pi * k * 0.19)) / k ** 1.15
-        tau = 0.85 * (262.0 / f) ** 0.4 / (1 + 0.45 * (k - 1) ** 1.25)
-        m = min(n, samples(tau * 6))
-        out[:m] += a * np.exp(-t[:m] / tau) * np.sin(2 * np.pi * f * k * (1 + 0.0004 * k * k) * t[:m] + rng.uniform(0, 6.28))
-    # finger/pick noise and a damped release at the end of the note (next strum)
-    out[:samples(0.006)] += sos_filter(rng.standard_normal(samples(0.006)), "band", [1500, 6000]) * 0.03
-    g = samples(dur)
-    if g < n:
-        out[g:] *= np.exp(-np.arange(n - g) / (0.06 * SR))
-    return fade(out, 0.002, 0.02) * vel
+    env = adsr(n, attack, 0.5, 0.7, release, dur)
+    x = np.zeros(n)
+    for df, a in ((0.0, 1.0), (beat_hz, 0.75)):
+        ph = rng.uniform(0, 2 * np.pi)
+        w = 2 * np.pi * (f + df) * t + ph
+        x += a * (np.sin(w) + 0.10 * np.sin(2 * w) + 0.035 * np.sin(3 * w))
+    return fade(x * env, 0.004, 0.05) * vel / 1.9
 
 
-def pluck(f, dur, vel=1.0, rng=None, bright=1.0):
-    """Synth pluck (stereo): two detuned band-limited saws whose upper harmonics decay faster."""
-    ring = dur + 0.12
-    n = samples(ring)
+def soft_flute(f, dur, vel=1.0, rng=None):
+    """Soft concert-flute tone: strong fundamental, a little 2nd/3rd harmonic, breath noise around the harmonics, a
+    short breathy 'chiff' at the onset, a slight scoop and a delayed, gentle vibrato."""
+    n = samples(dur + 0.35)
     t = taxis(n)
-    K = int(min(30, 11000 // f))
-    out = np.zeros((n, 2))
-    for ch, det in enumerate((1.0035, 0.9965)):
-        for k in range(1, K + 1):
-            tau = 0.42 / (1 + 0.55 * (k - 1) / bright)
-            m = min(n, samples(tau * 6))
-            out[:m, ch] += (1.0 / k) * np.exp(-t[:m] / tau) * np.sin(2 * np.pi * f * det * k * t[:m] + k * 0.3)
-    g = samples(dur)
-    if g < n:
-        out[g:] *= np.exp(-np.arange(n - g) / (0.03 * SR))[:, None]
-    out[:samples(0.002)] *= np.linspace(0, 1, samples(0.002))[:, None]
-    return fade(out, 0.001, 0.01) * vel * 0.6
+    env = adsr(n, 0.08, 0.35, 0.88, 0.14, dur)
+    vib = 11 * np.sin(2 * np.pi * 5.1 * t + rng.uniform(0, 6.28)) * np.clip((t - 0.22) / 0.35, 0, 1)
+    scoop = -18 * np.exp(-t / 0.04)
+    phase = 2 * np.pi * np.cumsum(f * 2 ** ((vib + scoop) / 1200.0)) / SR
+    x = np.sin(phase) + 0.28 * np.sin(2 * phase + 0.4) + 0.09 * np.sin(3 * phase + 1.1) + 0.035 * np.sin(4 * phase)
+    x *= 1 + 0.04 * np.sin(2 * np.pi * 5.1 * t)
+    breath = sos_filter(rng.standard_normal(n), "band", [min(f * 1.5, 9000), min(f * 7, 16000)]) * 0.045
+    chiff = sos_filter(rng.standard_normal(n), "band", [min(f * 2, 9000), min(f * 9, 18000)]) * exp_env(n, 0.025, 0.004)
+    return fade((x + breath) * env + chiff * 0.25 * np.minimum(1.0, env * 3), 0.004, 0.04) * vel
 
 
-def bass(f, dur, vel=1.0, rng=None, bright=0.5):
-    """Round soft bass: few harmonics, brief brightness decay, gentle saturation."""
-    n = samples(dur + 0.12)
+def flute(f, dur, vel=1.0, rng=None, droop_cents=0.0):
+    """Soft ocarina-like tone (sine + a little odd harmonic + breath), optional pitch droop and vibrato."""
+    n = samples(dur + 0.15)
     t = taxis(n)
-    env = adsr(n, 0.006, 0.18, 0.72, 0.06, dur)
-    x = np.sin(2 * np.pi * f * t)
-    for k, a in ((2, 0.45), (3, 0.2 * bright + 0.05), (4, 0.08 * bright)):
-        x += a * np.exp(-t / 0.25) * np.sin(2 * np.pi * f * k * t)
-    x = np.tanh(1.4 * x * env) / np.tanh(1.4)
-    return fade(x, 0.003, 0.02) * vel
+    env = adsr(n, 0.04, 0.3, 0.85, 0.09, dur)
+    cents = 7 * np.sin(2 * np.pi * 5.0 * t) * np.clip((t - 0.12) / 0.2, 0, 1) - droop_cents * np.clip(t / max(dur, 1e-3), 0, 1) ** 2
+    phase = 2 * np.pi * np.cumsum(f * 2 ** (cents / 1200.0)) / SR
+    x = np.sin(phase) + 0.12 * np.sin(3 * phase) + 0.05 * np.sin(2 * phase)
+    breath = sos_filter(rng.standard_normal(n), "band", [min(f * 2, 8000), min(f * 6, 16000)]) * 0.025
+    return fade((x + breath) * env, 0.005, 0.03) * vel
 
 
 def pad(f, dur, vel=1.0, rng=None):
-    """Warm detuned saw pad (stereo), slow attack and release."""
+    """Warm detuned string pad (stereo), slow attack and release."""
     n = samples(dur + 0.7)
     t = taxis(n)
     K = int(min(16, 4000 // f))
@@ -277,19 +406,7 @@ def brass(f, dur, vel=1.0, rng=None, vibrato=True):
     return fade(x, 0.004, 0.03) * vel
 
 
-def flute(f, dur, vel=1.0, rng=None, droop_cents=0.0):
-    """Soft ocarina-like tone (sine + a little odd harmonic + breath), optional pitch droop and vibrato."""
-    n = samples(dur + 0.15)
-    t = taxis(n)
-    env = adsr(n, 0.04, 0.3, 0.85, 0.09, dur)
-    cents = 7 * np.sin(2 * np.pi * 5.0 * t) * np.clip((t - 0.12) / 0.2, 0, 1) - droop_cents * np.clip(t / max(dur, 1e-3), 0, 1) ** 2
-    phase = 2 * np.pi * np.cumsum(f * 2 ** (cents / 1200.0)) / SR
-    x = np.sin(phase) + 0.12 * np.sin(3 * phase) + 0.05 * np.sin(2 * phase)
-    breath = sos_filter(rng.standard_normal(n), "band", [min(f * 2, 8000), min(f * 6, 16000)]) * 0.025
-    return fade((x + breath) * env, 0.005, 0.03) * vel
-
-
-# ----------------------------------------------------------------------------------------- drums
+# ----------------------------------------------------------------------------------------- percussion
 
 def kick(vel=1.0, rng=None, soft=False):
     n = samples(0.45)
@@ -298,30 +415,6 @@ def kick(vel=1.0, rng=None, soft=False):
     x = np.sin(2 * np.pi * np.cumsum(f) / SR) * exp_env(n, 0.16 if soft else 0.2, 0.001)
     x[:samples(0.004)] += sos_filter(rng.standard_normal(samples(0.004)), "low", 3000) * (0.08 if soft else 0.15)
     return fade(x, 0.0005, 0.03) * vel
-
-
-def snare(vel=1.0, rng=None):
-    n = samples(0.3)
-    noise = sos_filter(rng.standard_normal(n), "band", [1200, 7000]) * exp_env(n, 0.07, 0.0005)
-    tone = np.sin(2 * np.pi * 190 * taxis(n)) * exp_env(n, 0.05, 0.0005) * 0.6
-    return fade(noise * 0.8 + tone, 0.0005, 0.03) * vel
-
-
-def clap(vel=1.0, rng=None):
-    n = samples(0.32)
-    x = np.zeros(n)
-    for i, d in enumerate((0.0, 0.009, 0.019, 0.027)):
-        m = samples(0.06)
-        burst = rng.standard_normal(m) * exp_env(m, 0.006 if i < 3 else 0.06, 0.0003)
-        place(x, burst, d, 1.0 if i < 3 else 0.9)
-    x = sos_filter(x, "band", [900, 3500])
-    return fade(x, 0.0005, 0.03) * vel
-
-
-def hat(vel=1.0, rng=None, open_=False):
-    n = samples(0.25 if open_ else 0.08)
-    x = sos_filter(rng.standard_normal(n), "high", 7500) * exp_env(n, 0.09 if open_ else 0.022, 0.0005)
-    return fade(x, 0.0005, 0.01) * vel
 
 
 def shaker(vel=1.0, rng=None):
@@ -354,6 +447,30 @@ def tom(f=160, vel=1.0, rng=None):
     return fade(x, 0.0005, 0.03) * vel
 
 
+def triangle(vel=1.0, rng=None, length=1.4):
+    """Orchestral triangle 'ting': a dense set of high inharmonic modes with a long ring."""
+    x = modal(1180.0, [1.0, 2.71, 3.86, 5.02, 6.37, 7.7, 9.13], [0.45, 1.0, 0.75, 0.6, 0.5, 0.38, 0.28],
+              [0.8, 0.75, 0.65, 0.55, 0.45, 0.38, 0.3], length, attack=0.0004, rng=rng)
+    m = samples(0.003)
+    x[:m] += sos_filter(rng.standard_normal(m), "high", 5000) * exp_env(m, 0.0005, 0.0001) * 0.2
+    return fade(sos_filter(x, "high", 1500), 0.0005, 0.05) * vel * 0.5
+
+
+def mark_tree(rng, count=18, span=0.45, lo=2300.0, hi=7000.0, up=True, vel=1.0):
+    """Mark-tree (bar chimes) glissando: a quick cascade of small rods, each a free-bar modal ping."""
+    buf = np.zeros(samples(span + 1.2))
+    fs = np.geomspace(lo, hi, count)
+    if not up:
+        fs = fs[::-1]
+    for i, f in enumerate(fs):
+        tt = span * (i / (count - 1)) ** 1.15
+        tau = rng.uniform(0.35, 0.7) * (3000.0 / f) ** 0.3
+        ping = modal(f * rng.uniform(0.985, 1.015), [1.0, 2.756, 5.404], [1.0, 0.22, 0.06],
+                     [tau, tau * 0.35, tau * 0.15], min(tau * 5, 1.1), attack=0.0006, rng=rng)
+        place(buf, ping, tt, vel * rng.uniform(0.55, 1.0))
+    return buf
+
+
 def swell(dur, rng, lo=3000, hi=14000):
     """Soft cymbal-like noise swell (reverse-ish), for section changes."""
     n = samples(dur)
@@ -379,7 +496,8 @@ def filtered_noise(dur, fc, bw_oct, rng, nfft=1024, hop=128):
 
 
 def bubble(f0, f1, dur, rng=None, tau=None, harm=0.15):
-    """Bubble 'pop': sine with an exponential pitch rise and fast decay (the classic water-drop sound)."""
+    """Bubble 'bloop': a damped sine whose pitch glides f0 -> f1 (the Minnaert resonance of an air bubble rises as it
+    nears the surface — the classic water-drop sound)."""
     n = samples(dur)
     t = taxis(n)
     k = math.log(f1 / f0) / dur
@@ -423,6 +541,53 @@ def shimmer(dur, rng, lo=6000, hi=12000, rise=0.15):
     env = np.minimum(t / rise, 1.0) * np.exp(-np.maximum(t - rise, 0) / (dur * 0.35))
     x = sos_filter(rng.standard_normal(n), "band", [lo, min(hi, SR * 0.45)]) * env
     return fade(x, 0.005, 0.02)
+
+
+def cork_thup(rng):
+    """A cork pressed into the neck: a muffled low 'thoop' (sine dropping fast), a hollow neck resonance 'pok' and a
+    felt-like puff of noise. Kept in the low-mids so it still reads on a phone speaker."""
+    b = np.zeros(samples(0.16))
+    n = samples(0.14)
+    t = taxis(n)
+    f = 210 + 420 * np.exp(-t / 0.01)                                     # 'thoop': 630 -> 210 Hz
+    place(b, np.sin(2 * np.pi * np.cumsum(f) / SR) * exp_env(n, 0.03, 0.0012), 0, 0.85)
+    place(b, modal(720, [1.0, 1.52, 2.3], [1.0, 0.35, 0.15], [0.02, 0.011, 0.006], 0.1, attack=0.0008, rng=rng),
+          0.001, 0.5)
+    puff = sos_filter(rng.standard_normal(n), "band", [300, 1800]) * exp_env(n, 0.007, 0.0008)
+    place(b, puff, 0, 0.2)
+    return fade(b, 0.0008, 0.02)
+
+
+def rock(f, vel=1.0, rng=None, tau=0.015):
+    """Rock chip: a few inharmonic, heavily damped modes (randomized per chip) plus a gritty noise attack."""
+    r = [1.0, 1.0 + rng.uniform(0.4, 0.75), 2.0 + rng.uniform(0.1, 0.7), 3.0 + rng.uniform(0.2, 1.0)]
+    x = modal(f, r, [1.0, 0.7, 0.45, 0.25], [tau, tau * 0.75, tau * 0.55, tau * 0.4], tau * 8 + 0.01,
+              attack=0.0003, rng=rng)
+    m = min(samples(0.006), len(x))
+    lo = min(f * 1.5, 6000.0)
+    grit = sos_filter(rng.standard_normal(m), "band", [lo, min(f * 6, 16000.0)]) * exp_env(m, 0.0015, 0.0002)
+    x[:m] += grit * 0.35
+    return x * vel
+
+
+def fracture(rng, count=6, span=0.016, lo=1400, hi=7500, tau=0.0025):
+    """A crack running through stone: a quick train of micro-impulses, each a tiny band-passed noise burst."""
+    n = samples(span + 0.03)
+    t = taxis(n)
+    env = np.zeros(n)
+    times = np.sort(rng.uniform(0, span, count))
+    times[0] = 0.0
+    for i, t0 in enumerate(times):
+        tt = t - t0
+        env += np.where(tt >= 0, rng.uniform(0.5, 1.0) * 0.8 ** i * np.exp(-np.maximum(tt, 0) / tau), 0.0)
+    x = sos_filter(rng.standard_normal(n), "band", [lo, hi]) * env
+    return fade(x, 0.0002, 0.005)
+
+
+def flutter_env(n, rng, lo=5.0, hi=22.0, depth=0.35):
+    """Slow random amplitude flutter (turbulence of a liquid stream), mean 1."""
+    x = sos_filter(rng.standard_normal(n + SR // 2), "band", [lo, hi])[SR // 2:]
+    return np.clip(1 + depth * x / (np.std(x) + 1e-9), 0.3, 1.8)
 
 
 def make_ir(rt60, length, rng, stereo=True, predelay=0.012, hf_damp=2.2, early=True):
@@ -498,6 +663,14 @@ def lufs(x):
     return -0.691 + 10 * math.log10(zs[ls > rel].mean())
 
 
+def momentary_max(x):
+    """Loudest 400 ms momentary loudness (BS.1770, mono), clip zero-padded: a fair way to compare one-shots of
+    different lengths (a 0.1 s tick counts as quieter than a 0.4 s sound of the same level, as we hear it)."""
+    y = k_weight(np.concatenate([np.zeros(samples(0.4)), x, np.zeros(samples(0.4))]))
+    ms = uniform_filter1d(y ** 2, samples(0.4), mode="constant")
+    return -0.691 + 10 * math.log10(max(float(ms.max()), 1e-12))
+
+
 def limiter(x, ceiling_db, look=0.006, wrap=False):
     """Look-ahead peak limiter (no overshoot): gain = moving average of a min-filtered gain curve."""
     thr = 10 ** (ceiling_db / 20)
@@ -517,7 +690,7 @@ def remove_dc(x):
     return signal.sosfiltfilt(sos, x, axis=0)
 
 
-def trim_tail(x, thresh_db=-62):
+def trim_tail(x, thresh_db=-56):
     thr = 10 ** (thresh_db / 20) * np.max(np.abs(x))
     idx = np.nonzero(np.abs(x) > thr)[0]
     if len(idx) == 0:
@@ -533,7 +706,35 @@ def write_wav16(path, x, rng):
     wavfile.write(path, SR, y)
 
 
-# ============================================================================================ SFX designs
+def snake_case(pascal):
+    """Same rule as AudioManager.ToSnakeCase: 'StoneCrack' -> 'stone_crack'."""
+    out = []
+    for i, c in enumerate(pascal):
+        if c.isupper():
+            if i > 0 and (pascal[i - 1].islower() or pascal[i - 1].isdigit() or
+                          (i + 1 < len(pascal) and pascal[i + 1].islower() and pascal[i - 1].isupper())):
+                out.append("_")
+            out.append(c.lower())
+        else:
+            out.append(c)
+    return "".join(out)
+
+
+def enum_names(kind):
+    """snake_case names of `enum <kind>` in AudioManager.cs, or None if it can't be read."""
+    try:
+        with open(ENUM_SRC, encoding="utf-8") as fh:
+            src = fh.read()
+    except OSError:
+        return None
+    m = re.search(r"\benum\s+" + kind + r"\s*\{(.*?)\}", src, re.S)
+    if not m:
+        return None
+    body = re.sub(r"/\*.*?\*/", "", re.sub(r"//[^\n]*", "", m.group(1)), flags=re.S)
+    return [snake_case(p.split("=")[0].strip()) for p in body.split(",") if p.strip()]
+
+
+# ============================================================================================ SFX designs: UI / meta
 
 def sfx_click(rng):
     b = np.zeros(samples(0.2))
@@ -545,8 +746,9 @@ def sfx_click(rng):
 def sfx_popup_open(rng):
     b = np.zeros(samples(0.8))
     place(b, sweep_tone(330, 980, 0.16, tau=0.12, harm=(0.2,)), 0, 0.7)
-    place(b, glock(hz("C6"), 0.55, rng, length=0.6), 0.05)
-    place(b, glock(hz("G6"), 0.5, rng, length=0.6), 0.12)
+    place(b, celesta(hz("C6"), 0.6, rng, length=0.6), 0.05)
+    place(b, glock(hz("G6"), 0.4, rng, length=0.6), 0.12)
+    place(b, celesta(hz("G6"), 0.35, rng, length=0.6), 0.12)
     place(b, sparkle(0.35, 4, rng, vel=0.25, start=0.12), 0.0)
     return reverb_mono(b, rng, 0.5, 0.18)
 
@@ -557,285 +759,6 @@ def sfx_popup_close(rng):
     place(b, marimba(hz("G5"), 0.6, rng, length=0.3), 0.0)
     place(b, marimba(hz("C5"), 0.7, rng, length=0.4), 0.065)
     return reverb_mono(b, rng, 0.4, 0.12)
-
-
-def sfx_pick(rng):
-    b = np.zeros(samples(0.16))
-    place(b, marimba(hz("E6"), 0.7, rng, length=0.1) * exp_env(samples(0.1), 0.03), 0)
-    place(b, bubble(600, 1150, 0.035, tau=0.015), 0.0, 0.45)
-    return b
-
-
-def sfx_drop(rng):
-    b = np.zeros(samples(0.22))
-    place(b, marimba(hz("A5"), 0.8, rng, length=0.16) * exp_env(samples(0.16), 0.05), 0.002)
-    place(b, sweep_tone(230, 140, 0.06, tau=0.025), 0, 0.6)
-    place(b, mallet_noise(0.02, 1800, rng, 0.003), 0, 0.15)
-    return b
-
-
-def sfx_invalid(rng):
-    b = np.zeros(samples(0.42))
-    for i, t0 in enumerate((0.0, 0.12)):
-        place(b, sweep_tone(330, 235, 0.11, tau=0.05, harm=(0.35, 0.1)), t0, 0.8 if i == 0 else 0.7)
-    return reverb_mono(sos_filter(b, "low", 2500), rng, 0.3, 0.08)
-
-
-def sfx_match(rng):
-    b = np.zeros(samples(1.2))
-    for i, (note, t0) in enumerate((("C6", 0.0), ("E6", 0.055), ("G6", 0.11))):
-        place(b, glock(hz(note), 0.75, rng, length=0.9), t0)
-        place(b, kalimba(hz(note), 0.35, rng, length=0.5), t0)
-    place(b, bell(hz("C7"), 0.35, rng, length=0.8), 0.17)
-    place(b, sparkle(0.6, 9, rng, vel=0.3, start=0.15), 0.0)
-    place(b, shimmer(0.6, rng), 0.12, 0.05)
-    return reverb_mono(b, rng, 0.7, 0.22)
-
-
-def sfx_combo(rng):
-    b = np.zeros(samples(1.2))
-    notes = ["C6", "D6", "E6", "G6", "A6", "C7"]
-    for i, note in enumerate(notes):
-        t0 = i * 0.045
-        place(b, kalimba(hz(note), 0.6 + 0.06 * i, rng, length=0.5), t0)
-        place(b, glock(hz(note), 0.35 + 0.05 * i, rng, length=0.6), t0)
-    place(b, sparkle(0.7, 10, rng, vel=0.28, start=0.25), 0.0)
-    return reverb_mono(b, rng, 0.7, 0.22)
-
-
-def sfx_star(rng):
-    b = np.zeros(samples(0.9))
-    place(b, glock(hz("G6"), 0.8, rng, length=0.7), 0)
-    place(b, glock(hz("D7"), 0.7, rng, length=0.7), 0.07)
-    place(b, sparkle(0.45, 5, rng, vel=0.22, start=0.1), 0.0)
-    return reverb_mono(b, rng, 0.6, 0.2)
-
-
-def sfx_coin(rng):
-    b = np.zeros(samples(0.7))
-    for note, t0, v in (("B5", 0.0, 0.7), ("E6", 0.075, 0.9)):
-        f = hz(note)
-        tone = modal(f, [1, 2, 3, 4.2], [1.0, 0.25, 0.3, 0.12], [0.35, 0.12, 0.08, 0.05], 0.6, attack=0.0008, rng=rng)
-        place(b, tone, t0, v)
-        place(b, bell(f * 2, 0.15, rng, length=0.4), t0)
-    return reverb_mono(b, rng, 0.45, 0.14)
-
-
-def sfx_layer_reveal(rng):
-    b = np.zeros(samples(0.6))
-    place(b, filtered_noise(0.24, lambda t: 500 * (3200 / 500) ** (t / 0.24), 0.7, rng)
-          * np.sin(np.pi * np.linspace(0, 1, samples(0.24))) ** 2, 0, 0.18)
-    place(b, bubble(420, 820, 0.06, tau=0.03), 0.17, 0.6)
-    place(b, marimba(hz("C6"), 0.45, rng, length=0.3), 0.19)
-    return reverb_mono(b, rng, 0.45, 0.14)
-
-
-def sfx_unlock(rng):
-    b = np.zeros(samples(1.3))
-    place(b, mallet_noise(0.05, 2500, rng, 0.01), 0, 0.5)
-    place(b, sweep_tone(180, 90, 0.08, tau=0.04), 0, 0.5)
-    for t0 in (0.0, 0.06, 0.13):
-        f0 = rng.uniform(1900, 2700)
-        place(b, modal(f0, [1, 2.32, 4.25, 6.63], [1, 0.6, 0.35, 0.2], [0.11, 0.07, 0.05, 0.03], 0.4, attack=0.0005,
-                       rng=rng), t0, 0.45)
-    for i, note in enumerate(("C6", "G6", "C7")):
-        place(b, glock(hz(note), 0.6 + 0.1 * i, rng, length=0.8), 0.2 + 0.07 * i)
-    place(b, sparkle(0.6, 7, rng, vel=0.25, start=0.3), 0.0)
-    return reverb_mono(b, rng, 0.7, 0.2)
-
-
-def sfx_win(rng):
-    """~3.5 s joyful fanfare: brass 'da-da-da-daaa, da-daaaa', glockenspiel run, timpani-ish kicks, sparkle shower."""
-    b = np.zeros(samples(4.2))
-    mel = [("G4", 0.0, 0.13), ("C5", 0.15, 0.13), ("E5", 0.30, 0.13), ("G5", 0.45, 0.38), ("E5", 0.90, 0.13),
-           ("G5", 1.05, 1.55)]
-    for note, t0, d in mel:
-        place(b, brass(hz(note), d, 0.55, rng), t0)
-        place(b, glock(hz(note) * 2, 0.25, rng, length=0.8), t0)
-    for chord, t0, d in ((("C4", "E4", "G4"), 0.45, 0.38), (("C4", "E4", "G4", "C5"), 1.05, 1.6)):
-        for note in chord:
-            place(b, brass(hz(note), d, 0.22, rng, vibrato=False), t0 + rng.uniform(0, 0.01))
-    place(b, brass(hz("F4"), 0.13, 0.2, rng), 0.9)
-    place(b, brass(hz("A4"), 0.13, 0.2, rng), 0.9)
-    for t0, v in ((0.45, 0.6), (1.05, 0.8)):
-        place(b, kick(v, rng, soft=True), t0)
-        place(b, tom(110, 0.3, rng), t0)
-    for i, note in enumerate(("C6", "E6", "G6", "C7", "E7", "G7")):
-        place(b, glock(hz(note), 0.5, rng, length=1.0), 1.08 + i * 0.045)
-    place(b, sparkle(2.6, 26, rng, vel=0.22, start=1.15), 0.0)
-    place(b, swell(0.6, rng), 0.48, 0.05)
-    place(b, shimmer(2.2, rng, rise=0.4), 1.05, 0.04)
-    for i, note in enumerate(("C5", "E5", "G5", "C6")):
-        place(b, bell(hz(note), 0.12, rng, length=2.0), 1.05 + 0.02 * i)
-    b = sos_filter(b, "low", 9000)
-    return reverb_mono(b, rng, 1.2, 0.22, length=1.6)
-
-
-def sfx_lose(rng):
-    """Gentle descending 'aww' (wah-wah-wah-waaah) on a soft ocarina, with a warm low marimba under the last note."""
-    b = np.zeros(samples(2.6))
-    for note, t0, d, droop in (("G4", 0.0, 0.26, 0), ("F#4", 0.32, 0.26, 0), ("F4", 0.64, 0.26, 0),
-                               ("E4", 0.96, 1.05, 40)):
-        place(b, flute(hz(note), d, 0.7, rng, droop_cents=droop), t0)
-    place(b, marimba(hz("C3"), 0.5, rng, length=1.2), 0.96)
-    place(b, marimba(hz("G3"), 0.35, rng, length=1.0), 0.98)
-    place(b, bubble(500, 260, 0.25, tau=0.12), 2.0, 0.15)
-    return reverb_mono(sos_filter(b, "low", 5000), rng, 0.9, 0.18)
-
-
-def sfx_timer_tick(rng):
-    b = np.zeros(samples(0.08))
-    place(b, woodblock(1850, 1.0, rng, tau=0.012), 0)
-    return sos_filter(b, "low", 6000)
-
-
-def sfx_freeze(rng):
-    b = np.zeros(samples(1.5))
-    for i, note in enumerate(("E7", "C7", "A6", "E6", "C6")):
-        place(b, bell(hz(note), 0.4, rng, length=0.9, ratio=3.01, index=1.6), i * 0.065)
-    n = samples(0.9)
-    crackle = np.zeros(n)
-    for _ in range(70):
-        i = int(rng.beta(1.0, 2.5) * n)
-        crackle[i:i + 1] += rng.choice([-1, 1]) * rng.uniform(0.3, 1.0)
-    crackle = sos_filter(crackle, "high", 3500)
-    place(b, crackle, 0.02, 0.5)
-    place(b, filtered_noise(0.8, lambda t: 7000 * (1800 / 7000) ** (t / 0.8), 0.6, rng)
-          * exp_env(samples(0.8), 0.3, 0.05), 0.0, 0.08)
-    place(b, sweep_tone(320, 160, 0.4, tau=0.2), 0.0, 0.25)
-    return reverb_mono(b, rng, 1.0, 0.3)
-
-
-def sfx_hammer(rng):
-    """Cartoon toy-hammer smash: a chunky plastic 'bonk' (modal knock + pitch-dropping body), a bright crack, a
-    short low thump for weight and tinkling debris. The thump stays moderate: phone speakers cannot reproduce it,
-    and with peak normalization a dominant sub-bass would make the audible part ~6 dB quieter than the other SFX."""
-    b = np.zeros(samples(0.8))
-    place(b, sweep_tone(150, 60, 0.2, tau=0.07), 0, 0.5)                                   # weight
-    place(b, sweep_tone(700, 380, 0.14, tau=0.06, harm=(0.45, 0.2)), 0, 0.6)               # "bonk" body
-    place(b, modal(420, [1.0, 2.43, 4.1], [1.0, 0.55, 0.25], [0.07, 0.035, 0.018], 0.3, attack=0.0004, rng=rng), 0, 0.7)
-    crack = sos_filter(rng.standard_normal(samples(0.06)), "band", [900, 4500]) * exp_env(samples(0.06), 0.012, 0.0004)
-    place(b, crack, 0.0, 0.8)
-    for t0 in (0.07, 0.12, 0.18, 0.25, 0.31):                                              # debris
-        place(b, marimba(rng.uniform(1500, 2600), 0.3, rng, length=0.08) * exp_env(samples(0.08), 0.02), t0)
-    b = np.tanh(1.6 * b) / np.tanh(1.6)
-    return reverb_mono(b, rng, 0.4, 0.12)
-
-
-def sfx_wand(rng):
-    b = np.zeros(samples(1.6))
-    notes = ["C6", "D6", "E6", "G6", "A6", "C7", "D7", "E7"]
-    for i, note in enumerate(notes):
-        place(b, glock(hz(note), 0.45 + 0.04 * i, rng, length=0.7), i * 0.035)
-    place(b, filtered_noise(0.4, lambda t: 2000 * (9000 / 2000) ** (t / 0.4), 0.5, rng)
-          * np.sin(np.pi * np.linspace(0, 1, samples(0.4))), 0, 0.07)
-    place(b, bell(hz("E7"), 0.45, rng, length=1.0), 0.3)
-    place(b, sparkle(1.0, 12, rng, vel=0.25, start=0.3), 0.0)
-    return reverb_mono(b, rng, 0.9, 0.28)
-
-
-def sfx_shuffle(rng):
-    b = np.zeros(samples(0.85))
-    for i in range(7):
-        n = samples(0.03)
-        flick = sos_filter(rng.standard_normal(n), "band", [1500 + 150 * (i % 3), 5200]) * exp_env(n, 0.008, 0.0008)
-        place(b, flick, 0.02 + i * 0.065 + rng.uniform(-0.006, 0.006), 0.5)
-    n = samples(0.5)
-    sw = filtered_noise(0.5, lambda t: 700 + 1300 * np.sin(np.pi * t / 0.5), 0.8, rng)
-    sw *= np.sin(np.pi * np.linspace(0, 1, n)) ** 2 * (0.7 + 0.3 * np.sin(2 * np.pi * 12 * taxis(n)))
-    place(b, sw, 0.0, 0.12)
-    place(b, bubble(500, 950, 0.05, tau=0.025), 0.5, 0.5)
-    return reverb_mono(b, rng, 0.4, 0.12)
-
-
-def sfx_bomb(rng):
-    """Cartoon 'ka-boom': punchy mid-range blast (saturated noise burst + a 'boom' body with harmonics), a sub
-    sweep for weight (moderate, see sfx_hammer), crackling bubbles and a few sparkles as the smoke clears."""
-    b = np.zeros(samples(1.7))
-    place(b, sweep_tone(110, 38, 0.8, tau=0.3), 0, 0.55)                                   # sub weight
-    place(b, sweep_tone(240, 90, 0.35, tau=0.12, harm=(0.6, 0.35, 0.2)), 0, 0.75)          # audible boom body
-    n = samples(1.2)
-    noise = filtered_noise(1.2, lambda tt: 3000 * (300 / 3000) ** (tt / 1.2) ** 0.7, 1.3, rng) * exp_env(n, 0.22, 0.002)
-    place(b, noise, 0, 0.55)
-    burst = sos_filter(rng.standard_normal(samples(0.08)), "band", [500, 5000]) * exp_env(samples(0.08), 0.02, 0.0005)
-    place(b, burst, 0, 0.7)
-    for _ in range(16):
-        place(b, bubble(rng.uniform(350, 900), rng.uniform(1000, 2000), 0.04, tau=0.015), rng.uniform(0.12, 0.9), 0.16)
-    place(b, sparkle(1.0, 6, rng, vel=0.14, start=0.3), 0.0)
-    b = sos_filter(b, "low", 6000)
-    b = np.tanh(1.8 * b) / np.tanh(1.8)
-    return reverb_mono(b, rng, 0.9, 0.18)
-
-
-def sfx_chest_open(rng):
-    b = np.zeros(samples(2.0))
-    place(b, sweep_tone(150, 90, 0.12, tau=0.06), 0, 0.7)
-    place(b, marimba(hz("C4"), 0.6, rng, length=0.3), 0)
-    for i, note in enumerate(("C6", "E6", "G6", "C7", "E7")):
-        place(b, glock(hz(note), 0.5 + 0.05 * i, rng, length=0.9), 0.12 + i * 0.06)
-    for note in ("C5", "E5", "G5", "C6"):
-        place(b, pad(hz(note), 0.7, 0.35, rng)[:, 0], 0.1)
-    place(b, sparkle(1.3, 16, rng, vel=0.25, start=0.4), 0.0)
-    place(b, shimmer(1.0, rng, rise=0.3), 0.15, 0.04)
-    return reverb_mono(b, rng, 1.0, 0.25)
-
-
-def sfx_spin_tick(rng):
-    b = np.zeros(samples(0.05))
-    place(b, woodblock(2900, 1.0, rng, tau=0.006), 0)
-    place(b, mallet_noise(0.006, 7000, rng, 0.0012), 0, 0.2)
-    return b
-
-
-def sfx_spin_win(rng):
-    b = np.zeros(samples(1.6))
-    for i, note in enumerate(("G5", "C6", "E6", "G6")):
-        place(b, kalimba(hz(note), 0.7, rng, length=0.6), i * 0.065)
-        place(b, glock(hz(note), 0.35, rng, length=0.6), i * 0.065)
-    place(b, bell(hz("C7"), 0.6, rng, length=1.1), 0.28)
-    place(b, glock(hz("C7"), 0.5, rng, length=1.0), 0.28)
-    place(b, sparkle(1.0, 12, rng, vel=0.25, start=0.3), 0.0)
-    return reverb_mono(b, rng, 0.9, 0.25)
-
-
-def sfx_reward(rng):
-    b = np.zeros(samples(2.0))
-    n = samples(0.32)
-    place(b, filtered_noise(0.32, lambda t: 1500 * (6000 / 1500) ** (t / 0.32), 0.7, rng) * np.linspace(0, 1, n) ** 2,
-          0, 0.08)
-    for note in ("C6", "E6", "G6"):
-        place(b, glock(hz(note), 0.55, rng, length=1.3), 0.3)
-        place(b, bell(hz(note), 0.25, rng, length=1.2), 0.3)
-    for note in ("C4", "G4", "E5"):
-        place(b, pad(hz(note), 0.8, 0.4, rng)[:, 1], 0.28)
-    place(b, sparkle(1.3, 14, rng, vel=0.25, start=0.35), 0.0)
-    return reverb_mono(b, rng, 1.0, 0.25)
-
-
-def sfx_heart(rng):
-    b = np.zeros(samples(0.9))
-    for t0, f0 in ((0.0, 520), (0.16, 440)):
-        place(b, sweep_tone(f0, f0 * 0.72, 0.12, tau=0.06, harm=(0.25,)), t0, 0.8)
-    place(b, glock(hz("E6"), 0.45, rng, length=0.6), 0.3)
-    place(b, sparkle(0.4, 4, rng, vel=0.2, start=0.32), 0.0)
-    return reverb_mono(b, rng, 0.6, 0.18)
-
-
-def sfx_whoosh(rng):
-    dur = 0.48
-    n = samples(dur)
-    x = filtered_noise(dur, lambda t: 300 * (1800 / 300) ** np.sin(np.pi * 0.85 * t / dur), 1.1, rng)
-    env = np.sin(np.pi * np.linspace(0, 1, n) ** 0.8) ** 2
-    return reverb_mono(sos_filter(x * env, "low", 6000), rng, 0.4, 0.12)
-
-
-def sfx_card_flip(rng):
-    b = np.zeros(samples(0.25))
-    for t0, v in ((0.0, 1.0), (0.045, 0.6)):
-        n = samples(0.05)
-        place(b, sos_filter(rng.standard_normal(n), "high", 2000) * exp_env(n, 0.012, 0.0008), t0, v * 0.6)
-    place(b, sweep_tone(200, 150, 0.05, tau=0.02), 0.04, 0.4)
-    return b
 
 
 def sfx_toggle(rng):
@@ -888,7 +811,8 @@ def sfx_countdown(rng):
 
 
 def sfx_fanfare(rng):
-    """Short 'ta-da-daa!' (~1.7 s) for level start / area unlocked."""
+    """Short 'ta-da-daa!' (~1.7 s) for area unlocked / rewards: soft brass with a harp glissando sweeping into the
+    chord, celesta and glockenspiel sparkle on top."""
     b = np.zeros(samples(2.4))
     place(b, brass(hz("G4"), 0.1, 0.5, rng), 0.0)
     place(b, brass(hz("C5"), 0.1, 0.5, rng), 0.12)
@@ -897,8 +821,11 @@ def sfx_fanfare(rng):
     for note in ("C4", "G4"):
         place(b, brass(hz(note), 0.95, 0.2, rng, vibrato=False), 0.26)
     place(b, kick(0.5, rng, soft=True), 0.26)
+    for i, note in enumerate(("C5", "E5", "G5", "C6", "E6", "G6")):
+        place(b, harp(hz(note), 0.3 + 0.03 * i, rng, length=1.0), 0.1 + i * 0.026)
     for i, note in enumerate(("G6", "C7", "E7")):
-        place(b, glock(hz(note), 0.4, rng, length=0.9), 0.28 + i * 0.05)
+        place(b, glock(hz(note), 0.3, rng, length=0.9), 0.28 + i * 0.05)
+        place(b, celesta(hz(note) / 2, 0.35, rng, length=0.9), 0.28 + i * 0.05)
     place(b, sparkle(1.2, 10, rng, vel=0.2, start=0.35), 0.0)
     return reverb_mono(sos_filter(b, "low", 9000), rng, 0.9, 0.2)
 
@@ -910,6 +837,462 @@ def sfx_swoosh(rng):
     t = np.linspace(0, 1, n)
     env = np.minimum(t / 0.25, 1) * (1 - t) ** 1.5
     return reverb_mono(x * env, rng, 0.3, 0.1)
+
+
+def sfx_whoosh(rng):
+    dur = 0.48
+    n = samples(dur)
+    x = filtered_noise(dur, lambda t: 300 * (1800 / 300) ** np.sin(np.pi * 0.85 * t / dur), 1.1, rng)
+    env = np.sin(np.pi * np.linspace(0, 1, n) ** 0.8) ** 2
+    return reverb_mono(sos_filter(x * env, "low", 6000), rng, 0.4, 0.12)
+
+
+def sfx_star(rng):
+    b = np.zeros(samples(0.9))
+    place(b, glock(hz("G6"), 0.8, rng, length=0.7), 0)
+    place(b, glock(hz("D7"), 0.7, rng, length=0.7), 0.07)
+    place(b, sparkle(0.45, 5, rng, vel=0.22, start=0.1), 0.0)
+    return reverb_mono(b, rng, 0.6, 0.2)
+
+
+def sfx_coin(rng):
+    b = np.zeros(samples(0.7))
+    for note, t0, v in (("B5", 0.0, 0.7), ("E6", 0.075, 0.9)):
+        f = hz(note)
+        tone = modal(f, [1, 2, 3, 4.2], [1.0, 0.25, 0.3, 0.12], [0.35, 0.12, 0.08, 0.05], 0.6, attack=0.0008, rng=rng)
+        place(b, tone, t0, v)
+        place(b, bell(f * 2, 0.15, rng, length=0.4), t0)
+    b = sos_filter(b, "low", 12000, order=4)       # the coin flights pitch it up to x1.36: keep the top clean
+    return reverb_mono(b, rng, 0.45, 0.14)
+
+
+def sfx_reward(rng):
+    b = np.zeros(samples(2.0))
+    n = samples(0.32)
+    place(b, filtered_noise(0.32, lambda t: 1500 * (6000 / 1500) ** (t / 0.32), 0.7, rng) * np.linspace(0, 1, n) ** 2,
+          0, 0.08)
+    for i, note in enumerate(("G4", "C5", "E5", "G5", "C6")):
+        place(b, harp(hz(note), 0.3 + 0.04 * i, rng, length=1.4), 0.16 + i * 0.028)
+    for note in ("C6", "E6", "G6"):
+        place(b, glock(hz(note), 0.5, rng, length=1.3), 0.3)
+        place(b, bell(hz(note), 0.25, rng, length=1.2), 0.3)
+    for note in ("C4", "G4", "E5"):
+        place(b, pad(hz(note), 0.8, 0.4, rng)[:, 1], 0.28)
+    place(b, sparkle(1.3, 14, rng, vel=0.25, start=0.35), 0.0)
+    return reverb_mono(b, rng, 1.0, 0.25)
+
+
+def sfx_heart(rng):
+    b = np.zeros(samples(0.9))
+    for t0, f0 in ((0.0, 520), (0.16, 440)):
+        place(b, sweep_tone(f0, f0 * 0.72, 0.12, tau=0.06, harm=(0.25,)), t0, 0.8)
+    place(b, glock(hz("E6"), 0.45, rng, length=0.6), 0.3)
+    place(b, sparkle(0.4, 4, rng, vel=0.2, start=0.32), 0.0)
+    return reverb_mono(b, rng, 0.6, 0.18)
+
+
+def sfx_card_flip(rng):
+    b = np.zeros(samples(0.25))
+    for t0, v in ((0.0, 1.0), (0.045, 0.6)):
+        n = samples(0.05)
+        place(b, sos_filter(rng.standard_normal(n), "high", 2000) * exp_env(n, 0.012, 0.0008), t0, v * 0.6)
+    place(b, sweep_tone(200, 150, 0.05, tau=0.02), 0.04, 0.4)
+    return b
+
+
+def sfx_chest_open(rng):
+    b = np.zeros(samples(2.0))
+    place(b, sweep_tone(150, 90, 0.12, tau=0.06), 0, 0.7)
+    place(b, marimba(hz("C4"), 0.6, rng, length=0.3), 0)
+    for i, note in enumerate(("C5", "E5", "G5", "C6", "E6", "G6", "C7")):
+        place(b, harp(hz(note), 0.28 + 0.03 * i, rng, length=1.2), 0.06 + i * 0.024)
+    for i, note in enumerate(("C6", "E6", "G6", "C7", "E7")):
+        place(b, glock(hz(note), 0.5 + 0.05 * i, rng, length=0.9), 0.12 + i * 0.06)
+    for note in ("C5", "E5", "G5", "C6"):
+        place(b, pad(hz(note), 0.7, 0.35, rng)[:, 0], 0.1)
+    place(b, sparkle(1.3, 16, rng, vel=0.25, start=0.4), 0.0)
+    place(b, shimmer(1.0, rng, rise=0.3), 0.15, 0.04)
+    return reverb_mono(b, rng, 1.0, 0.25)
+
+
+def sfx_spin_tick(rng):
+    b = np.zeros(samples(0.05))
+    place(b, woodblock(2900, 1.0, rng, tau=0.006), 0)
+    place(b, mallet_noise(0.006, 7000, rng, 0.0012), 0, 0.2)
+    return b
+
+
+def sfx_spin_win(rng):
+    b = np.zeros(samples(1.6))
+    for i, note in enumerate(("G5", "C6", "E6", "G6")):
+        place(b, kalimba(hz(note), 0.7, rng, length=0.6), i * 0.065)
+        place(b, glock(hz(note), 0.35, rng, length=0.6), i * 0.065)
+    place(b, bell(hz("C7"), 0.6, rng, length=1.1), 0.28)
+    place(b, glock(hz("C7"), 0.5, rng, length=1.0), 0.28)
+    place(b, sparkle(1.0, 12, rng, vel=0.25, start=0.3), 0.0)
+    return reverb_mono(b, rng, 0.9, 0.25)
+
+
+def sfx_win(rng):
+    """~3.5 s joyful fanfare: brass 'da-da-da-daaa, da-daaaa', a harp glissando into the final chord, glockenspiel
+    and celesta runs, timpani-ish kicks, sparkle shower."""
+    b = np.zeros(samples(4.2))
+    mel = [("G4", 0.0, 0.13), ("C5", 0.15, 0.13), ("E5", 0.30, 0.13), ("G5", 0.45, 0.38), ("E5", 0.90, 0.13),
+           ("G5", 1.05, 1.55)]
+    for note, t0, d in mel:
+        place(b, brass(hz(note), d, 0.55, rng), t0)
+        place(b, glock(hz(note) * 2, 0.25, rng, length=0.8), t0)
+    for chord, t0, d in ((("C4", "E4", "G4"), 0.45, 0.38), (("C4", "E4", "G4", "C5"), 1.05, 1.6)):
+        for note in chord:
+            place(b, brass(hz(note), d, 0.22, rng, vibrato=False), t0 + rng.uniform(0, 0.01))
+    place(b, brass(hz("F4"), 0.13, 0.2, rng), 0.9)
+    place(b, brass(hz("A4"), 0.13, 0.2, rng), 0.9)
+    for t0, v in ((0.45, 0.6), (1.05, 0.8)):
+        place(b, kick(v, rng, soft=True), t0)
+        place(b, tom(110, 0.3, rng), t0)
+    for i, note in enumerate(("C4", "E4", "G4", "C5", "E5", "G5", "C6", "E6", "G6")):
+        place(b, harp(hz(note), 0.25 + 0.03 * i, rng, length=1.6), 0.82 + i * 0.026)
+    for i, note in enumerate(("C6", "E6", "G6", "C7", "E7", "G7")):
+        place(b, glock(hz(note), 0.4, rng, length=1.0), 1.08 + i * 0.045)
+        place(b, celesta(hz(note) / 2, 0.35, rng, length=1.0), 1.08 + i * 0.045)
+    place(b, sparkle(2.6, 26, rng, vel=0.22, start=1.15), 0.0)
+    place(b, swell(0.6, rng), 0.48, 0.05)
+    place(b, shimmer(2.2, rng, rise=0.4), 1.05, 0.04)
+    for i, note in enumerate(("C5", "E5", "G5", "C6")):
+        place(b, bell(hz(note), 0.12, rng, length=2.0), 1.05 + 0.02 * i)
+    b = sos_filter(b, "low", 9000)
+    return reverb_mono(b, rng, 1.2, 0.22, length=1.6)
+
+
+def sfx_lose(rng):
+    """Gentle descending 'aww' (wah-wah-wah-waaah) on a soft ocarina, with a warm low marimba under the last note."""
+    b = np.zeros(samples(2.6))
+    for note, t0, d, droop in (("G4", 0.0, 0.26, 0), ("F#4", 0.32, 0.26, 0), ("F4", 0.64, 0.26, 0),
+                               ("E4", 0.96, 1.05, 40)):
+        place(b, flute(hz(note), d, 0.7, rng, droop_cents=droop), t0)
+    place(b, marimba(hz("C3"), 0.5, rng, length=1.2), 0.96)
+    place(b, marimba(hz("G3"), 0.35, rng, length=1.0), 0.98)
+    place(b, bubble(500, 260, 0.25, tau=0.12), 2.0, 0.15)
+    return reverb_mono(sos_filter(b, "low", 5000), rng, 0.9, 0.18)
+
+
+def sfx_combo(rng):
+    """Praise sting for 'Great! / Amazing!' (~1.1 s): an airy whoosh and a harp glissando sweeping up into a bright
+    celesta + glockenspiel arpeggio (C6 E6 G6 C7 E7), a bell chord and a sparkle shower."""
+    b = np.zeros(samples(1.9))
+    dur = 0.32
+    n = samples(dur)
+    place(b, filtered_noise(dur, lambda t: 900 * (6000 / 900) ** (t / dur), 0.6, rng) * np.linspace(0, 1, n) ** 2,
+          0, 0.06)
+    for i, note in enumerate(("C5", "D5", "E5", "G5", "A5", "C6", "D6", "E6", "G6", "A6")):
+        place(b, harp(hz(note), 0.26 + 0.025 * i, rng, length=1.0), i * 0.022)
+    for i, note in enumerate(("C6", "E6", "G6", "C7", "E7")):
+        t0 = 0.22 + i * 0.045
+        place(b, celesta(hz(note), 0.55 + 0.05 * i, rng, length=0.9), t0)
+        place(b, glock(hz(note), 0.25 + 0.04 * i, rng, length=0.8), t0)
+    for note in ("C7", "E7", "G7"):
+        place(b, bell(hz(note), 0.13, rng, length=1.0), 0.42)
+    place(b, sparkle(1.0, 12, rng, vel=0.24, start=0.4), 0.0)
+    place(b, shimmer(0.8, rng, rise=0.2), 0.3, 0.03)
+    return reverb_mono(sos_filter(b, "low", 11000), rng, 0.9, 0.24)
+
+
+def sfx_unlock(rng):
+    b = np.zeros(samples(1.3))
+    place(b, mallet_noise(0.05, 2500, rng, 0.01), 0, 0.5)
+    place(b, sweep_tone(180, 90, 0.08, tau=0.04), 0, 0.5)
+    for t0 in (0.0, 0.06, 0.13):
+        f0 = rng.uniform(1900, 2700)
+        place(b, modal(f0, [1, 2.32, 4.25, 6.63], [1, 0.6, 0.35, 0.2], [0.11, 0.07, 0.05, 0.03], 0.4, attack=0.0005,
+                       rng=rng), t0, 0.45)
+    for i, note in enumerate(("C6", "G6", "C7")):
+        place(b, glock(hz(note), 0.6 + 0.1 * i, rng, length=0.8), 0.2 + 0.07 * i)
+    place(b, sparkle(0.6, 7, rng, vel=0.25, start=0.3), 0.0)
+    return reverb_mono(b, rng, 0.7, 0.2)
+
+
+# ============================================================================================ SFX designs: board
+# These play all the time: short, tonal, soft attacks on the noisy parts, highs rolled off. Most are in C major
+# (C E G) so they sit with the game music (C major / A minor). The code varies the pitch of several of them (the
+# complete chime up to +60 %), hence the low-passes: nothing important above ~11 kHz.
+
+def sfx_select(rng):
+    """Bottle lifted (~0.13 s): a light glass 'tink' (G6, split modes shimmer) with a tiny upward bloop for 'lift'."""
+    b = np.zeros(samples(0.22))
+    place(b, glass(hz("G6"), 1.0, rng, length=0.16, tau=0.05), 0)
+    place(b, bubble(620, 1050, 0.04, tau=0.014, harm=0.05), 0.004, 0.22)
+    b = sos_filter(sos_filter(b, "low", 9000), "high", 250)
+    return reverb_mono(b, rng, 0.3, 0.07)
+
+
+def sfx_deselect(rng):
+    """Bottle put back down (~0.12 s): a lower, softer glass tap (D6, upper modes muted) over a small 'tuk' of the
+    base touching the shelf, with a faint falling bloop."""
+    b = np.zeros(samples(0.22))
+    place(b, sos_filter(glass(hz("D6"), 0.8, rng, length=0.14, tau=0.03, bright=0.5), "low", 6000), 0.006)
+    place(b, modal(380, [1.0, 1.73, 2.41], [1.0, 0.45, 0.2], [0.011, 0.008, 0.005], 0.08, attack=0.0008, rng=rng),
+          0, 0.4)
+    place(b, bubble(900, 640, 0.035, tau=0.012, harm=0.05), 0.0, 0.1)
+    b = sos_filter(b, "high", 200)
+    return reverb_mono(b, rng, 0.3, 0.06)
+
+
+def sfx_pour(rng):
+    """Liquid pouring into a bottle (~0.62 s, plays as each pour starts). A first 'blup' as the stream lands, then a
+    soft band-passed noise stream with turbulent flutter whose air-column resonance (+ its 3rd harmonic, as in a
+    quarter-wave tube) rises as the bottle fills — that rising 'fill' pitch is the cue — sprinkled with small bubble
+    pops and two soft glugs; smooth cosine fade-out."""
+    dur = 0.62
+    n = samples(dur)
+    t = taxis(n)
+    b = np.zeros(samples(dur + 0.1))
+    env = np.minimum(t / 0.04, 1.0)
+    rel = dur - 0.26
+    env *= np.where(t < rel, 1.0, 0.5 + 0.5 * np.cos(np.pi * np.clip((t - rel) / 0.26, 0, 1)))
+    flutter = flutter_env(n, rng, depth=0.3)
+    stream = filtered_noise(dur, lambda tt: 1100 * (1700 / 1100) ** (tt / dur), 0.8, rng)
+    place(b, sos_filter(stream, "low", 4500) * env * flutter, 0, 0.05)
+    f_res = lambda tt: 560 * (1 + 0.55 * (tt / dur))       # 560 -> 870 Hz: the air column shortens as it fills
+    res = (filtered_noise(dur, f_res, 0.06, rng, nfft=2048, hop=256)
+           + 0.35 * filtered_noise(dur, lambda tt: 3 * f_res(tt), 0.05, rng, nfft=2048, hop=256))
+    place(b, res * env * flutter, 0, 0.06)
+    place(b, bubble(520, 1050, 0.06, tau=0.02, harm=0.08), 0.012, 1.0)                 # the stream lands
+    for t0, f0, g in ((0.13, 380, 0.38), (0.25, 430, 0.28)):                          # glugs
+        place(b, bubble(f0, f0 * 1.7, 0.06, tau=0.022, harm=0.1), t0, g)
+    tt = 0.03
+    while True:                                                                        # small bubbles
+        tt += rng.exponential(1 / 50)
+        if tt > dur - 0.12:
+            break
+        f0 = math.exp(rng.uniform(math.log(800), math.log(2600)))
+        tau = rng.uniform(0.006, 0.016)
+        g = 0.22 * rng.uniform(0.3, 1.0) * float(np.interp(tt, [0, 0.1, dur - 0.25, dur], [0.6, 1, 1, 0.2]))
+        place(b, bubble(f0, f0 * rng.uniform(1.2, 1.6), tau * 4, tau=tau, harm=0.05), tt, g)
+    b = sos_filter(sos_filter(b, "high", 170), "low", 7000)
+    return reverb_mono(b, rng, 0.35, 0.1)
+
+
+def sfx_pour_end(rng):
+    """Liquid settles in the target (~0.25 s): a soft splash that darkens as it settles, two droplets and a few tiny
+    bubbles."""
+    b = np.zeros(samples(0.34))
+    n = samples(0.12)
+    place(b, filtered_noise(0.12, lambda tt: 2600 * (1200 / 2600) ** (tt / 0.12), 1.0, rng) * exp_env(n, 0.03, 0.003),
+          0, 0.16)
+    m = samples(0.2)
+    place(b, filtered_noise(0.2, lambda tt: 600 + 0 * tt, 0.6, rng) * exp_env(m, 0.06, 0.01), 0, 0.08)
+    place(b, bubble(900, 1500, 0.05, tau=0.016, harm=0.06), 0.004, 0.7)
+    place(b, bubble(1250, 2000, 0.04, tau=0.012, harm=0.05), 0.06, 0.45)
+    place(b, bubble(1600, 2500, 0.035, tau=0.009), 0.12, 0.25)
+    for _ in range(4):
+        f0 = rng.uniform(1000, 2400)
+        place(b, bubble(f0, f0 * 1.4, 0.03, tau=0.007, harm=0.0), rng.uniform(0.03, 0.2), 0.12)
+    b = sos_filter(sos_filter(b, "high", 200), "low", 8000)
+    return reverb_mono(b, rng, 0.35, 0.1)
+
+
+def sfx_complete(rng):
+    """Bottle completed (~0.75 s): a muffled cork 'thup', then a quick celesta + glockenspiel arpeggio (C6 E6 G6 C7)
+    with a bell and sparkles. Purely consonant, so it stays musical when the code raises its pitch per combo step."""
+    b = np.zeros(samples(1.3))
+    place(b, cork_thup(rng), 0, 1.5)
+    for i, (note, v) in enumerate((("C6", 0.36), ("E6", 0.44), ("G6", 0.54), ("C7", 0.72))):   # crescendo
+        t0 = 0.075 + i * 0.048
+        place(b, celesta(hz(note), v, rng, length=0.6, decay=0.22), t0)
+        place(b, glock(hz(note), v * 0.25, rng, length=0.35), t0)
+    place(b, bell(hz("C7"), 0.13, rng, length=0.6), 0.22)
+    place(b, bell(hz("G7"), 0.05, rng, length=0.5), 0.24)
+    place(b, sparkle(0.55, 6, rng, vel=0.18, start=0.22), 0.0)
+    place(b, shimmer(0.45, rng, rise=0.08), 0.18, 0.02)
+    b = sos_filter(b, "low", 11000, order=4)       # pitched up to x1.6 by the combo: nothing near Nyquist
+    return reverb_mono(b, rng, 0.75, 0.2)
+
+
+def sfx_invalid(rng):
+    """Gentle 'nope' (~0.3 s): two muted glass taps a minor third down (G6, E6) on two soft low 'uh-uh' tones."""
+    b = np.zeros(samples(0.45))
+    for t0, note, f0, g in ((0.0, "G6", 300, 0.8), (0.11, "E6", 250, 0.72)):
+        tap = sos_filter(glass(hz(note), 1.0, rng, length=0.09, tau=0.016, bright=0.5), "low", 3500)
+        place(b, tap, t0, 0.5 * g)
+        place(b, sweep_tone(f0, f0 * 0.82, 0.1, tau=0.045, harm=(0.35, 0.12)), t0, 0.65 * g)
+    b = sos_filter(b, "low", 3000)
+    return reverb_mono(b, rng, 0.3, 0.07)
+
+
+def sfx_reveal(rng):
+    """A hidden '?' layer shows its colour (~0.4 s): a shimmering rising swish (tremolo on band-passed noise), a few
+    tiny pings, a liquid bloop and a soft celesta/glock bloom (G6 + D7)."""
+    b = np.zeros(samples(0.9))
+    dur = 0.34
+    n = samples(dur)
+    t = taxis(n)
+    sw = filtered_noise(dur, lambda tt: 1300 * (6500 / 1300) ** (tt / dur), 0.55, rng)
+    place(b, sw * bell_curve(n) * (0.7 + 0.3 * np.sin(2 * np.pi * 26 * t)), 0, 0.05)
+    place(b, bubble(700, 1300, 0.045, tau=0.015), 0.14, 0.5)
+    place(b, celesta(hz("G6"), 0.22, rng, length=0.45, decay=0.18), 0.16)
+    place(b, glock(hz("D7"), 0.08, rng, length=0.3), 0.2)
+    place(b, sparkle(0.35, 5, rng, vel=0.14, start=0.06), 0.0)
+    b = sos_filter(b, "low", 11000)
+    return reverb_mono(b, rng, 0.6, 0.2)
+
+
+def sfx_stone_crack(rng):
+    """The stone shell cracks as its counter ticks down (~0.25 s): a sharp crackle (micro-fracture train) on a dry
+    rocky knock with a bit of weight, then a little grit trickling."""
+    b = np.zeros(samples(0.3))
+    crack = fracture(rng, count=9, span=0.045, lo=1200, hi=6500, tau=0.004)
+    place(b, np.tanh(2.5 * crack / np.max(np.abs(crack))), 0, 0.55)                  # crunchy 'krk'
+    place(b, rock(900, 1.0, rng, tau=0.03), 0.001, 0.8)
+    place(b, rock(520, 1.0, rng, tau=0.04), 0.0, 0.6)
+    place(b, sweep_tone(170, 110, 0.06, tau=0.022), 0, 0.25)
+    for _ in range(6):
+        place(b, rock(rng.uniform(2500, 5000), 1.0, rng, tau=0.004), rng.uniform(0.05, 0.17), 0.15)
+    b = np.tanh(1.6 * b / np.max(np.abs(b)))                                            # glue the transient
+    b = sos_filter(b, "low", 10000)
+    return reverb_mono(b, rng, 0.25, 0.06)
+
+
+def sfx_stone_break(rng):
+    """The stone shatters and frees the bottle (~0.8 s): a heavy crack and thump, a clatter of rock chunks whose
+    density decays like bouncing debris, then a magical release — a rising shimmer, a celesta arpeggio, a bell and
+    sparkles."""
+    b = np.zeros(samples(1.6))
+    place(b, fracture(rng, count=10, span=0.03, lo=900, hi=6500), 0, 1.0)
+    place(b, sweep_tone(150, 70, 0.18, tau=0.06), 0, 0.5)
+    place(b, rock(380, 1.0, rng, tau=0.035), 0, 0.9)
+    place(b, rock(640, 1.0, rng, tau=0.025), 0.004, 0.6)
+    m = samples(0.25)
+    burst = filtered_noise(0.25, lambda tt: 1800 * (500 / 1800) ** (tt / 0.25), 1.2, rng) * exp_env(m, 0.05, 0.001)
+    place(b, burst, 0, 0.3)
+    for _ in range(22):
+        tt = 0.03 + 0.55 * rng.beta(1.2, 3.0)
+        f = math.exp(rng.uniform(math.log(700), math.log(4200)))
+        place(b, rock(f, 1.0, rng, tau=rng.uniform(0.006, 0.02)), tt, 0.35 * rng.uniform(0.3, 1.0) * (1 - tt))
+    m = samples(0.6)
+    rise = filtered_noise(0.6, lambda tt: 1500 * (8000 / 1500) ** (tt / 0.6), 0.6, rng) * bell_curve(m, 1.5)
+    place(b, rise, 0.12, 0.06)
+    for i, note in enumerate(("G5", "C6", "E6", "G6", "C7")):
+        place(b, celesta(hz(note), 0.5 + 0.05 * i, rng, length=0.8), 0.16 + i * 0.045)
+    place(b, bell(hz("E7"), 0.2, rng, length=0.9), 0.36)
+    place(b, sparkle(0.7, 9, rng, vel=0.22, start=0.25), 0.0)
+    b = sos_filter(b, "low", 10000)
+    return reverb_mono(b, rng, 0.7, 0.18)
+
+
+def sfx_undo(rng):
+    """Take back a pour (~0.4 s): a short reverse whoosh (noise swelling while its band slides down, like a rewind)
+    landing on a soft descending 'bwip' blip with a quiet celesta anchor."""
+    b = np.zeros(samples(0.6))
+    dur = 0.26
+    n = samples(dur)
+    t = taxis(n)
+    x = filtered_noise(dur, lambda tt: 4200 * (1100 / 4200) ** (tt / dur), 0.7, rng)
+    place(b, fade(x * (t / dur) ** 2.2, 0.002, 0.015), 0, 0.16)
+    place(b, sweep_tone(1500, 560, 0.13, tau=0.07, harm=(0.12,)), 0.235, 0.55)
+    place(b, celesta(hz("G5"), 0.3, rng, length=0.35), 0.25)
+    b = sos_filter(b, "low", 10000)
+    return reverb_mono(b, rng, 0.35, 0.1)
+
+
+def sfx_add_bottle(rng):
+    """An extra bottle appears (~0.6 s): a round glass 'pop' (bubble bloop + bright glass ting) with a little
+    celesta note and sparkle."""
+    b = np.zeros(samples(1.0))
+    place(b, bubble(240, 820, 0.07, tau=0.026, harm=0.12), 0, 0.9)
+    place(b, glass(hz("C7"), 0.8, rng, length=0.5, tau=0.16, bright=0.8), 0.035)
+    place(b, celesta(hz("G6"), 0.35, rng, length=0.6), 0.035)
+    place(b, sparkle(0.45, 5, rng, vel=0.22, start=0.08), 0.0)
+    place(b, shimmer(0.45, rng, rise=0.06), 0.05, 0.03)
+    b = sos_filter(b, "low", 11000)
+    return reverb_mono(b, rng, 0.6, 0.2)
+
+
+def sfx_wand(rng):
+    """Magic wand (~1 s): an airy whoosh sweeping up, a harp glissando into a rising celesta run, a bell twinkle and a
+    trail of sparkles."""
+    b = np.zeros(samples(1.8))
+    dur = 0.55
+    n = samples(dur)
+    place(b, filtered_noise(dur, lambda tt: 700 * (7500 / 700) ** (tt / dur), 0.6, rng) * bell_curve(n, 1.5), 0, 0.09)
+    for i, note in enumerate(("C5", "D5", "E5", "G5", "A5", "C6", "D6", "E6", "G6", "A6")):
+        place(b, harp(hz(note), 0.35 + 0.03 * i, rng, length=0.8), i * 0.026)
+    for i, note in enumerate(("E6", "G6", "C7", "E7")):
+        place(b, celesta(hz(note), 0.5 + 0.06 * i, rng, length=0.9), 0.24 + i * 0.05)
+    place(b, bell(hz("C7"), 0.3, rng, length=1.1), 0.42)
+    place(b, bell(hz("G7"), 0.12, rng, length=0.9), 0.46)
+    place(b, sparkle(1.05, 14, rng, vel=0.22, start=0.3), 0.0)
+    place(b, shimmer(0.8, rng, rise=0.25), 0.2, 0.03)
+    b = sos_filter(b, "low", 11000)
+    return reverb_mono(b, rng, 1.0, 0.26)
+
+
+def sfx_shuffle(rng):
+    """Shuffle (~0.8 s): a swirling whoosh (band centre circling up and down like a whirlpool, louder on the
+    upswings), a low liquid slosh, bubbles tumbling through it and a soft sparkle as it settles."""
+    b = np.zeros(samples(1.3))
+    dur = 0.75
+    n = samples(dur)
+    t = taxis(n)
+    swirl = lambda tt: 900 * 2 ** (1.1 * np.sin(2 * np.pi * 3.3 * tt) + 0.6 * tt / dur)
+    env = bell_curve(n) * (0.75 + 0.25 * np.sin(2 * np.pi * 3.3 * t + 1.2))
+    place(b, filtered_noise(dur, swirl, 0.55, rng) * env, 0, 0.14)
+    slosh = filtered_noise(dur, lambda tt: 420 * 2 ** (0.5 * np.sin(2 * np.pi * 3.3 * tt + 2)), 0.5, rng)
+    place(b, slosh * env, 0, 0.07)
+    for tt in np.sort(rng.uniform(0.06, 0.68, 14)):
+        f0 = rng.uniform(500, 1700)
+        place(b, bubble(f0, f0 * rng.uniform(1.4, 1.9), 0.05, tau=0.016, harm=0.06), tt, 0.3 * rng.uniform(0.5, 1.0))
+    place(b, sparkle(0.35, 4, rng, vel=0.18, start=0.0), 0.62)
+    b = sos_filter(sos_filter(b, "high", 150), "low", 10000)
+    return reverb_mono(b, rng, 0.5, 0.14)
+
+
+def sfx_crystal(rng):
+    """Crystal ball (~0.9 s): a glass-harmonica chord (E6 G6 B6 D7 — Cmaj9 colours, soft bowed attacks, slowly beating
+    pairs) inside a tremolo shimmer, a breathy rise and a few sparkles: mystical, but in key."""
+    b = np.zeros(samples(1.5))
+    place(b, glass(hz("E7"), 1.0, rng, length=0.4, tau=0.07, bright=0.7), 0.0)          # the crystal 'ting'
+    for i, note in enumerate(("E6", "G6", "B6", "D7")):
+        place(b, glass_harmonica(hz(note), 0.45 - 0.04 * i, 0.9, rng, release=0.22), 0.04 + i * 0.05, 0.065)
+    dur = 0.8
+    n = samples(dur)
+    t = taxis(n)
+    sh = sos_filter(rng.standard_normal(n), "band", [5000, 11000]) * bell_curve(n, 1.2)
+    place(b, sh * (0.6 + 0.4 * np.sin(2 * np.pi * 7 * t)), 0.05, 0.03)
+    m = samples(0.4)
+    place(b, filtered_noise(0.4, lambda tt: 900 * (3500 / 900) ** (tt / 0.4), 0.5, rng) * bell_curve(m), 0, 0.04)
+    place(b, sparkle(0.75, 7, rng, vel=0.12, start=0.2), 0.0)
+    b = sos_filter(b, "low", 11000)
+    return reverb_mono(b, rng, 1.0, 0.26)
+
+
+def sfx_rainbow(rng):
+    """Rainbow potion (~0.9 s): a burst of bubbles rising in pitch, then a bright pentatonic arpeggio (celesta over
+    harp) capped by a bell chord, sparkles and shimmer."""
+    b = np.zeros(samples(1.7))
+    for i in range(16):
+        tt = 0.32 * (i / 16) ** 0.8 + rng.uniform(-0.01, 0.01)
+        f0 = 450 * (2000 / 450) ** (i / 15) * rng.uniform(0.9, 1.1)
+        place(b, bubble(f0, f0 * 1.6, 0.05, tau=0.016), max(tt, 0.0), 0.32 * rng.uniform(0.6, 1.0))
+    for i, note in enumerate(("C6", "D6", "E6", "G6", "A6", "C7", "D7", "E7")):
+        t0 = 0.18 + i * 0.042
+        place(b, celesta(hz(note), 0.45 + 0.04 * i, rng, length=0.8), t0)
+        place(b, harp(hz(note) / 2, 0.3, rng, length=0.9), t0)
+    for note in ("C7", "E7", "G7"):
+        place(b, bell(hz(note), 0.12, rng, length=1.0), 0.52)
+    place(b, sparkle(0.9, 10, rng, vel=0.2, start=0.45), 0.0)
+    place(b, shimmer(0.7, rng, rise=0.2), 0.3, 0.03)
+    b = sos_filter(b, "low", 11000)
+    return reverb_mono(b, rng, 0.9, 0.24)
+
+
+def sfx_bubble(rng):
+    """One cute bubble (~0.15 s): a damped sine gliding up (the bubble's resonance rising as it surfaces) and a tiny
+    tick as it bursts."""
+    b = np.zeros(samples(0.2))
+    place(b, bubble(560, 1150, 0.075, tau=0.022, harm=0.1), 0)
+    place(b, bubble(2400, 3000, 0.012, tau=0.003, harm=0.0), 0.068, 0.12)
+    b = sos_filter(b, "low", 10000)
+    return reverb_mono(b, rng, 0.25, 0.06)
 
 
 def finalize_sfx(x):
@@ -927,9 +1310,11 @@ def finalize_sfx(x):
 # ============================================================================================ music engine
 
 class Song:
-    def __init__(self, name, bpm, bars, seed, mix):
-        self.name, self.bpm, self.bars, self.seed = name, bpm, bars, seed
-        self.events = []   # (beat, dur_beats, midi or None, vel, instrument)
+    def __init__(self, name, bpm, bars, seed, mix, bpb=4, reverb=(1.6, 2.2), pans=None):
+        self.name, self.bpm, self.bars, self.seed, self.bpb = name, bpm, bars, seed, bpb
+        self.reverb = reverb                # (rt60 s, IR length s)
+        self.pans = pans or {}              # per-song pan overrides (else INSTRUMENTS)
+        self.events = []                    # (beat, dur_beats, midi or None, vel, instrument)
         # Stem loudness targets in LU relative to the lead (0). Each instrument stem is rendered, measured
         # (BS.1770 integrated, gated: i.e. its level while playing) and scaled to its target before mixing.
         self.mix = mix
@@ -940,7 +1325,7 @@ class Song:
 
     @property
     def loop_s(self):
-        return self.bars * 4 * self.beat_s
+        return self.bars * self.bpb * self.beat_s
 
     def add(self, beat, dur, note, vel, inst):
         self.events.append((beat, dur, midi(note) if isinstance(note, str) else note, vel, inst))
@@ -953,64 +1338,56 @@ def fmidi(freq):
 
 # instrument -> (pan -1..1, reverb send, timing humanization sigma in ms)
 INSTRUMENTS = {
-    "uke": (-0.25, 0.22, 4),
-    "marimba": (0.2, 0.25, 5),
-    "glock": (0.35, 0.35, 5),
-    "kalimba": (-0.3, 0.3, 4),
-    "pluck": (0.0, 0.25, 3),
-    "bass": (0.0, 0.03, 2),
-    "pad": (0.0, 0.4, 0),
-    "kick": (0.0, 0.03, 1.5),
+    "celesta": (0.15, 0.32, 4),
+    "musicbox": (0.3, 0.4, 3),
+    "harp": (-0.3, 0.36, 4),
+    "pizz": (0.32, 0.2, 5),
+    "pizz_bass": (-0.05, 0.06, 3),
+    "flute": (-0.12, 0.38, 5),
+    "strings": (0.0, 0.42, 0),
+    "glock": (0.4, 0.36, 4),
     "kick_soft": (0.0, 0.03, 1.5),
-    "snare": (0.05, 0.18, 2.5),
-    "clap": (0.0, 0.25, 3),
-    "hat": (0.3, 0.06, 3),
-    "hat_open": (0.3, 0.1, 3),
-    "shaker": (-0.35, 0.08, 4),
-    "wood": (0.45, 0.15, 4),
-    "snap": (-0.15, 0.2, 4),
-    "tom": (-0.1, 0.15, 3),
-    "swell": (0.0, 0.3, 0),
+    "snap": (-0.2, 0.22, 4),
+    "shaker": (-0.38, 0.1, 4),
+    "triangle": (0.45, 0.32, 3),
+    "chimes": (0.25, 0.45, 0),
+    "chimes_down": (-0.25, 0.45, 0),
+    "wood": (0.42, 0.16, 3),
+    "tom": (-0.12, 0.16, 3),
 }
 
 
 def render_event(inst, f, dur_s, vel, rng):
-    if inst == "uke":
-        return uke(f, dur_s, vel, rng)
-    if inst == "marimba":
-        return marimba(f, vel, rng)
+    if inst == "celesta":
+        return celesta(f, vel, rng)
+    if inst == "musicbox":
+        return music_box(f, vel, rng)
+    if inst == "harp":
+        return harp(f, vel, rng, damp=dur_s)
+    if inst == "pizz":
+        return pizz(f, vel, rng)
+    if inst == "pizz_bass":
+        return pizz_bass(f, vel, rng)
+    if inst == "flute":
+        return soft_flute(f, dur_s, vel, rng)
+    if inst == "strings":
+        return pad(f, dur_s, vel, rng)
     if inst == "glock":
         return glock(f, vel, rng, length=1.5)
-    if inst == "kalimba":
-        return kalimba(f, vel, rng)
-    if inst == "pluck":
-        return pluck(f, dur_s, vel, rng)
-    if inst == "bass":
-        return bass(f, dur_s, vel, rng)
-    if inst == "pad":
-        return pad(f, dur_s, vel, rng)
-    if inst == "kick":
-        return kick(vel, rng)
     if inst == "kick_soft":
         return kick(vel, rng, soft=True)
-    if inst == "snare":
-        return snare(vel, rng)
-    if inst == "clap":
-        return clap(vel, rng)
-    if inst == "hat":
-        return hat(vel, rng)
-    if inst == "hat_open":
-        return hat(vel, rng, open_=True)
-    if inst == "shaker":
-        return shaker(vel, rng)
-    if inst == "wood":
-        return woodblock(f or 1700, vel, rng, tau=0.03)
     if inst == "snap":
         return snap(vel, rng)
+    if inst == "shaker":
+        return shaker(vel, rng)
+    if inst == "triangle":
+        return triangle(vel, rng)
+    if inst in ("chimes", "chimes_down"):
+        return mark_tree(rng, span=max(0.2, dur_s), up=inst == "chimes", vel=vel)
+    if inst == "wood":
+        return woodblock(f or 1700, vel, rng, tau=0.03)
     if inst == "tom":
         return tom(f or 160, vel, rng)
-    if inst == "swell":
-        return swell(dur_s, rng)
     raise ValueError(inst)
 
 
@@ -1024,7 +1401,7 @@ def render_song(song):
     folds the tail onto the start so the loop is exactly periodic. Returns (stereo float (n, 2), stem report)."""
     rng = np.random.default_rng(song.seed)
     L = samples(song.loop_s)
-    tail = samples(max(3.5, 2 * 4 * song.beat_s))
+    tail = samples(max(4.5, 2 * song.bpb * song.beat_s))
     n = L + tail
     dry = np.zeros((n, 2))
     send = np.zeros((n, 2))
@@ -1035,7 +1412,7 @@ def render_song(song):
     lead_ref = -20.0                                  # absolute LUFS the lead stem is scaled to (pre-master)
     for inst in sorted(by_inst):
         pan, rv, sigma = INSTRUMENTS[inst]
-        gl, gr = pan_gains(pan)
+        gl, gr = pan_gains(song.pans.get(inst, pan))
         stem = np.zeros((n, 2))
         for beat, dur, note, vel, _ in by_inst[inst]:
             t = beat * song.beat_s
@@ -1056,10 +1433,14 @@ def render_song(song):
         report[inst] = (song.mix.get(inst, -10.0), len(by_inst[inst]))
         dry += stem * g
         send += stem * (g * rv)
-    ir = make_ir(1.6, 2.2, np.random.default_rng(song.seed + 1), stereo=True, predelay=0.02)
+    rt60, ir_len = song.reverb
+    ir = make_ir(rt60, ir_len, np.random.default_rng(song.seed + 1), stereo=True, predelay=0.02)
     wet = np.stack([signal.fftconvolve(send[:, c], ir[:, c])[:n] for c in range(2)], axis=1)
     mix = dry + wet * 0.9
     mix = sos_filter(mix, "high", 32)
+    mix += 0.26 * sos_filter(mix, "high", 5000)        # ~+2 dB 'air' shelf: a little gloss on the bells and tines
+    # (Filters and reverb run before the fold: every response that spills past the loop end lands on the start, so
+    # the result is exactly what a circular/looping render would give.)
     return fold_loop(mix, L), report
 
 
@@ -1085,294 +1466,244 @@ def master(x):
 
 # ----------------------------------------------------------------------------------------- composition helpers
 
-UKE_SHAPES = {   # re-entrant G4 C4 E4 A4 tuning, strings in physical order (down strum order)
-    "F": ["A4", "C4", "F4", "A4"], "Am": ["A4", "C4", "E4", "A4"], "Bb": ["Bb4", "D4", "F4", "Bb4"],
-    "C": ["G4", "C4", "E4", "C5"], "C7": ["G4", "C4", "E4", "Bb4"], "Dm": ["A4", "D4", "F4", "A4"],
-    "Gm7": ["G4", "D4", "F4", "Bb4"], "Gm": ["G4", "D4", "G4", "Bb4"],
-}
-
-CHORD_TONES = {
-    "F": ["F", "A", "C"], "Am": ["A", "C", "E"], "Bb": ["Bb", "D", "F"], "C": ["C", "E", "G"],
-    "C7": ["C", "E", "G", "Bb"], "Dm": ["D", "F", "A"], "Gm7": ["G", "Bb", "D", "F"], "Gm": ["G", "Bb", "D"],
-    "G": ["G", "B", "D"], "D": ["D", "F#", "A"], "Em": ["E", "G", "B"], "E": ["E", "G#", "B"],
-    "E7": ["E", "G#", "B", "D"],
-}
-
-
-def tone(name, octave):
-    return f"{name}{octave}"
-
-
-def add_melody(song, bar, notes, inst, vel=0.8, octave_shift=0):
-    for beat, dur, note in notes:
-        m = midi(note) + 12 * octave_shift
-        accent = 1.0 if beat % 1 == 0 else 0.88
-        song.add(bar * 4 + beat, dur, m, vel * accent, inst)
+def seq(song, bar, text, inst, vel=0.8, octave=0, legato=1.0, accent=0.86):
+    """Mini notation, one bar: 'E5 1, G5 .5, r .5, B5 2' (note or r=rest, duration in beats) from the bar's downbeat.
+    Off-beat notes get a slightly lighter touch. Raises if the bar does not add up to the meter."""
+    beat = 0.0
+    for tok in text.split(","):
+        tok = tok.strip()
+        if not tok:
+            continue
+        name, d = tok.split()
+        d = float(d)
+        if name != "r":
+            on = abs(beat - round(beat)) < 1e-6
+            song.add(bar * song.bpb + beat, d * legato, midi(name) + 12 * octave, vel * (1.0 if on else accent), inst)
+        beat += d
+    if abs(beat - song.bpb) > 1e-6:
+        raise ValueError(f"{song.name} bar {bar}: '{text}' lasts {beat} beats, not {song.bpb}")
 
 
-def strum(song, bar, chord, pattern, vel=0.7):
-    """Ukulele strum: pattern of (beat, 'D'|'U', accent). Strings spread 10-14 ms (down = low->high order)."""
-    shape = UKE_SHAPES[chord]
-    beats = [p[0] for p in pattern] + [4.0]
-    for i, (beat, direction, acc) in enumerate(pattern):
-        dur = beats[i + 1] - beat + 0.05
-        order = shape if direction == "D" else list(reversed(shape))
-        spread = 0.012 / (60.0 / song.bpm)       # seconds -> beats
-        for k, note in enumerate(order):
-            if direction == "U" and k == 3:
-                continue                          # up strums usually miss the lowest string
-            song.add(bar * 4 + beat + k * spread, dur, note, vel * acc * (1.0 if direction == "D" else 0.8), "uke")
+def melody(song, first_bar, bars, inst, vel=0.8, octave=0, legato=1.0, ramp=None):
+    """One `seq` per bar; `ramp` = (v0, v1) for a crescendo across the bars."""
+    for i, text in enumerate(bars):
+        v = vel if ramp is None else ramp[0] + (ramp[1] - ramp[0]) * i / max(1, len(bars) - 1)
+        seq(song, first_bar + i, text, inst, v, octave, legato)
 
 
-def arp16(song, bar, chord, octave, inst, vel, pattern=(0, 1, 2, 3, 2, 1, 0, 1), beats=(0, 4), step=0.25):
-    """Arpeggio over the chord (root position from `octave`, plus the octave), one note per `step` beats."""
-    tones = CHORD_TONES[chord]
-    root = midi(tone(tones[0], octave))
-    pitches = []
-    for tname in tones[:3]:
-        m = midi(tone(tname, octave))
-        while m < root:
-            m += 12
-        pitches.append(m)
-    pitches = sorted(pitches) + [root + 12]
-    b = beats[0]
-    i = 0
-    while b < beats[1] - 1e-6:
-        accent = 1.0 if i % 4 == 0 else 0.8
-        song.add(bar * 4 + b, step * 0.9, pitches[pattern[i % len(pattern)] % len(pitches)], vel * accent, inst)
+def arp(song, bar, notes, pattern, inst, vel, step=0.5, start=0.0, end=None, dur=None, ring=False):
+    """Broken chord: notes[pattern[i]] every `step` beats from `start` to `end` (beats within the bar). ring=True:
+    every note sustains until `end` (harp/pedal style), then is damped."""
+    end = song.bpb if end is None else end
+    b, i = start, 0
+    while b < end - 1e-6:
+        on = abs(b - round(b)) < 1e-6
+        d = (end - b) if ring else (dur or step)
+        song.add(bar * song.bpb + b, d, notes[pattern[i % len(pattern)]], vel * (1.0 if on else 0.82), inst)
         b += step
         i += 1
 
 
-def root_of(chord, octave):
-    name = CHORD_TONES[chord][0]
-    return midi(tone(name, octave))
+def hits(song, bar, beats, notes, inst, vel, dur=0.5, roll=0.0):
+    """Block chord on each of `beats` (optionally rolled by `roll` beats per note)."""
+    for beat in beats:
+        for k, note in enumerate(notes):
+            song.add(bar * song.bpb + beat + k * roll, dur, note, vel, inst)
+
+
+def gliss(song, beat, notes, span, inst="harp", vel=0.5, crescendo=0.35, tail=0.1):
+    """Fast run (harp glissando) over `span` beats starting at absolute `beat`; the strings ring as a blur and are
+    damped `tail` beats after the run ends."""
+    k = max(1, len(notes) - 1)
+    for i, note in enumerate(notes):
+        song.add(beat + span * i / k, span * (1 - i / k) + tail, note, vel * (1 - crescendo + crescendo * i / k), inst)
+
+
+SCALES = {"major": (0, 2, 4, 5, 7, 9, 11), "minor": (0, 2, 3, 5, 7, 8, 10), "harm_minor": (0, 2, 3, 5, 7, 8, 11),
+          "pent": (0, 2, 4, 7, 9)}
+
+
+def scale_run(root, kind, lo, hi):
+    """Every note of `kind` scale on `root` (pitch class name) between notes lo..hi (inclusive), ascending."""
+    pc = NOTE_INDEX[root[0]] + (1 if "#" in root else -1 if "b" in root[1:] else 0)
+    steps = SCALES[kind]
+    return [m for m in range(midi(lo), midi(hi) + 1) if (m - pc) % 12 in steps]
 
 
 # ----------------------------------------------------------------------------------------- songs
 
 def song_home():
-    """Cheerful, relaxed, ~100 BPM, F major: ukulele strum, marimba melody, soft bass, shaker/snaps."""
-    s = Song("music_home", 100, 16, seed=101, mix={
-        "marimba": 0, "uke": -3, "bass": -4.5, "glock": -8, "kick_soft": -8, "snap": -11, "shaker": -13,
-        "wood": -11})
-    chords = ["F", "Am", "Bb", "C", "F", "Dm", "Gm7", "C7",
-              "Bb", "C", "Am", "Dm", "Bb", "C", "F", "C7"]
-    melody = [
-        [(0, .5, "C5"), (.5, .5, "A4"), (1, .5, "C5"), (1.5, 1, "F5"), (2.5, .5, "E5"), (3, 1, "C5")],
-        [(0, .5, "E5"), (.5, .5, "C5"), (1, .5, "E5"), (1.5, 1, "A5"), (2.5, .5, "G5"), (3, 1, "E5")],
-        [(0, .5, "D5"), (.5, .5, "F5"), (1, 1, "Bb5"), (2, .5, "A5"), (2.5, .5, "G5"), (3, 1, "F5")],
-        [(0, 1.5, "E5"), (1.5, .5, "D5"), (2, .5, "C5"), (2.5, .5, "D5"), (3, 1, "E5")],
-        [(0, .5, "F5"), (.5, .5, "C5"), (1, .5, "A4"), (1.5, .5, "C5"), (2, 1, "F5"), (3, .5, "G5"), (3.5, .5, "A5")],
-        [(0, 1, "A5"), (1, .5, "F5"), (1.5, .5, "D5"), (2, 1, "F5"), (3, 1, "A5")],
-        [(0, .5, "Bb5"), (.5, .5, "A5"), (1, .5, "G5"), (1.5, .5, "F5"), (2, 1, "D5"), (3, 1, "F5")],
-        [(0, 1.5, "E5"), (1.5, .5, "G5"), (2, 2, "C5")],
-        [(0, .5, "F5"), (.5, .5, "Bb5"), (1, 1, "D6"), (2, .5, "C6"), (2.5, .5, "Bb5"), (3, 1, "F5")],
-        [(0, .5, "E5"), (.5, .5, "G5"), (1, 1, "C6"), (2, .5, "Bb5"), (2.5, .5, "A5"), (3, 1, "G5")],
-        [(0, 1, "A5"), (1, .5, "E5"), (1.5, .5, "A5"), (2, 1, "C6"), (3, 1, "G5")],
-        [(0, 1.5, "F5"), (1.5, .5, "E5"), (2, .5, "D5"), (2.5, .5, "E5"), (3, 1, "F5")],
-        [(0, .5, "D5"), (.5, .5, "F5"), (1, .5, "Bb5"), (1.5, .5, "A5"), (2, 1, "Bb5"), (3, .5, "C6"), (3.5, .5, "D6")],
-        [(0, 1, "C6"), (1, .5, "G5"), (1.5, .5, "E5"), (2, 1, "G5"), (3, 1, "Bb5")],
-        [(0, 1.5, "A5"), (1.5, .5, "G5"), (2, .5, "F5"), (2.5, .5, "G5"), (3, 1, "A5")],
-        [(0, .5, "G5"), (.5, .5, "E5"), (1, .5, "C5"), (1.5, .5, "E5"), (2, 1, "G5"), (3, 1, "E5")],
-    ]
-    island = [(0, "D", 1.0), (1, "D", 0.8), (1.5, "U", 0.7), (2.5, "U", 0.75), (3, "D", 0.85), (3.5, "U", 0.7)]
-    for bar, chord in enumerate(chords):
-        strum(s, bar, chord, island, vel=0.62)
-        add_melody(s, bar, melody[bar], "marimba", vel=0.78)
-        if bar >= 8:   # second half: glockenspiel doubles the melody an octave up, softly
-            add_melody(s, bar, melody[bar], "glock", vel=0.32, octave_shift=1)
-        # bass: root, root, fifth, approach to the next chord
-        r = root_of(chord, 2)
-        if r < midi("E2"):
-            r += 12
-        nxt = root_of(chords[(bar + 1) % len(chords)], 2)
-        if nxt < midi("E2"):
-            nxt += 12
-        fifth = r + 7
-        approach = nxt - 1 if nxt > r else nxt + 2
-        s.add(bar * 4 + 0, 1.4, r, 0.85, "bass")
-        s.add(bar * 4 + 1.5, 0.45, r, 0.6, "bass")
-        s.add(bar * 4 + 2, 1.4, fifth, 0.72, "bass")
-        s.add(bar * 4 + 3.5, 0.45, approach, 0.6, "bass")
-        # light percussion
-        for e in range(8):
-            s.add(bar * 4 + e * 0.5, 0.1, None, 0.75 if e % 2 else 0.45, "shaker")
-        s.add(bar * 4 + 0, 0.2, None, 0.7, "kick_soft")
-        s.add(bar * 4 + 2.5 if bar % 2 else bar * 4 + 2, 0.2, None, 0.5, "kick_soft")
-        s.add(bar * 4 + 1, 0.1, None, 0.6, "snap")
-        s.add(bar * 4 + 3, 0.1, None, 0.65, "snap")
-        if bar % 4 == 3:
-            s.add(bar * 4 + 3.5, 0.1, fmidi(2100), 0.5, "wood")
-            s.add(bar * 4 + 3.75, 0.1, fmidi(1700), 0.45, "wood")
+    """'Luna's Waltz' — cheerful, inviting 3/4 waltz in F major, 144 BPM, 32 bars = 40.0 s. Celesta melody over a
+    pizzicato oom-pah-pah (bass on 1, chord on 2 and 3), harp rolls then flowing arpeggios, a soft flute B section
+    with a magical minor-iv turn (Bb -> Bbm), glockenspiel doubling the last A, triangle and shaker, mark-tree
+    chimes into the B section and back into the loop."""
+    s = Song("music_home", 144, 32, seed=101, bpb=3, reverb=(1.7, 2.3), mix={
+        "celesta": 0, "flute": -1, "pizz_bass": -5, "pizz": -7.5, "harp": -8.5, "glock": -12, "strings": -13,
+        "kick_soft": -14, "shaker": -17, "triangle": -18, "chimes": -13},
+        pans={"celesta": 0.1, "pizz": -0.3, "harp": 0.3, "flute": -0.08})
+    A = ["F", "Dm", "Gm", "C7", "F", "Dm", "Gm7", "C7"]
+    chords = A + ["F", "Bb", "F", "C7", "F", "Bb", "C7", "F"] + ["Bb", "Bbm", "F", "D7", "Gm", "C7", "F", "C7"] + A
+    V = {   # bass note, pizz chord (beats 2 and 3), harp voicing (low -> high)
+        "F": ("F2", ["A3", "C4", "F4"], ["F3", "C4", "F4", "A4", "C5"]),
+        "Dm": ("D2", ["A3", "D4", "F4"], ["D3", "A3", "D4", "F4", "A4"]),
+        "Gm": ("G2", ["Bb3", "D4", "G4"], ["G3", "D4", "G4", "Bb4", "D5"]),
+        "Gm7": ("G2", ["Bb3", "D4", "F4"], ["G3", "D4", "F4", "Bb4", "D5"]),
+        "C7": ("C3", ["Bb3", "E4", "G4"], ["C3", "G3", "C4", "E4", "Bb4"]),
+        "Bb": ("Bb2", ["Bb3", "D4", "F4"], ["Bb2", "F3", "Bb3", "D4", "F4"]),
+        "Bbm": ("Bb2", ["Bb3", "Db4", "F4"], ["Bb2", "F3", "Bb3", "Db4", "F4"]),
+        "D7": ("D3", ["A3", "C4", "F#4"], ["D3", "A3", "C4", "F#4", "A4"]),
+    }
+    mel_a = ["C5 1, F5 1, G5 1", "A5 2, F5 1", "G5 1, Bb5 1, D6 1", "C6 2, Bb5 1",
+             "A5 1, C6 1, F6 1", "E6 1, D6 1, A5 1", "Bb5 1, A5 1, G5 1", "G5 1, A5 1, Bb5 1"]
+    mel_a2 = ["A5 2, C6 1", "D6 1, C6 1, Bb5 1", "A5 1, G5 1, F5 1", "G5 2, E5 1",
+              "F5 1, A5 1, C6 1", "D6 1, F6 1, D6 1", "C6 1, Bb5 1, G5 1", "F5 2, r 1"]
+    mel_b = ["D5 1, F5 1, Bb5 1", "Db6 2, Bb5 1", "C6 2, A5 1", "F#5 1, A5 1, C6 1",
+             "Bb5 2, G5 1", "E5 1, G5 1, Bb5 1", "A5 3", "Bb5 1, G5 1, E5 1"]
+    mel_a3 = mel_a[:7] + ["Bb5 1, G5 1, E5 1"]
+    melody(s, 0, mel_a, "celesta", 0.8)
+    melody(s, 8, mel_a2, "celesta", 0.8)
+    melody(s, 16, mel_b, "flute", 0.75, legato=0.95)
+    melody(s, 24, mel_a3, "celesta", 0.82)
+    melody(s, 24, mel_a3, "glock", 0.26, octave=1)
+    for bar, ch in enumerate(chords):
+        bass, chord, hv = V[ch]
+        s.add(bar * 3, 0.9, bass, 0.85, "pizz_bass")
+        hits(s, bar, (1, 2), chord, "pizz", 0.5 if bar % 2 else 0.55, dur=0.4)
+        if bar < 8:                                       # first A: a harp roll on the downbeat
+            hits(s, bar, (0,), hv[:4], "harp", 0.45, dur=2.8, roll=0.06)
+        else:                                             # then flowing eighth-note arpeggios
+            arp(s, bar, hv, (0, 2, 3, 4, 3, 2) if bar % 2 == 0 else (0, 1, 2, 4, 3, 1), "harp", 0.42, ring=True)
+        if 16 <= bar < 24:
+            hits(s, bar, (0,), chord, "strings", 0.42, dur=2.9)
+        s.add(bar * 3, 0.2, None, 0.5, "kick_soft")
+        s.add(bar * 3 + 1, 0.1, None, 0.55, "shaker")
+        s.add(bar * 3 + 2, 0.1, None, 0.5, "shaker")
+        s.add(bar * 3 + 2.5, 0.1, None, 0.28, "shaker")
+        if bar % 4 == 0:
+            s.add(bar * 3, 0.2, None, 0.7 if bar % 8 == 0 else 0.4, "triangle")
+    s.add(15 * 3 + 1, 1.2, None, 0.8, "chimes")          # into the B section
+    s.add(31 * 3 + 1, 1.2, None, 0.8, "chimes")          # into the loop start
     return s
 
 
 def song_game():
-    """Upbeat, focused, ~118 BPM, G major: plucky melody, pulsing bass, kalimba arps, claps and shakers."""
-    s = Song("music_game", 118, 20, seed=202, mix={
-        "pluck": 0, "kalimba": -5, "bass": -4, "kick": -5, "clap": -7.5, "glock": -9, "pad": -10, "tom": -6,
-        "shaker": -13, "hat": -14, "hat_open": -12, "swell": -14})
-    chords = ["G", "D", "Em", "C", "G", "D", "C", "D",
-              "Em", "C", "G", "D", "Em", "C", "Am", "D",
-              "C", "D", "Em", "D"]
-    CHORD_TONES.setdefault("Am", ["A", "C", "E"])
-    bar1 = [(0, .5, "D5"), (.5, .5, "G5"), (1, .5, "F#5"), (1.5, .5, "G5"), (2, 1, "B5"), (3, .5, "A5"), (3.5, .5, "G5")]
-    b9 = [(0, .75, "B5"), (.75, .75, "G5"), (1.5, .5, "E5"), (2, .5, "G5"), (2.5, .5, "B5"), (3, 1, "A5")]
-    melody = [
-        bar1,
-        [(0, 1, "F#5"), (1, .5, "D5"), (1.5, .5, "E5"), (2, 1, "F#5"), (3, 1, "A5")],
-        [(0, .5, "G5"), (.5, .5, "E5"), (1, .5, "B4"), (1.5, .5, "E5"), (2, 1, "G5"), (3, .5, "F#5"), (3.5, .5, "E5")],
-        [(0, 1.5, "E5"), (1.5, .5, "D5"), (2, 1, "C5"), (3, 1, "D5")],
-        bar1,
-        [(0, 1, "F#5"), (1, .5, "A5"), (1.5, .5, "B5"), (2, 1, "A5"), (3, 1, "F#5")],
-        [(0, .5, "E5"), (.5, .5, "G5"), (1, .5, "C6"), (1.5, .5, "B5"), (2, .5, "A5"), (2.5, .5, "G5"), (3, 1, "E5")],
-        [(0, 1.5, "F#5"), (1.5, .5, "G5"), (2, 2, "A5")],
-        b9,
-        [(0, .75, "G5"), (.75, .75, "E5"), (1.5, .5, "C5"), (2, .5, "E5"), (2.5, .5, "G5"), (3, 1, "G5")],
-        [(0, .75, "D5"), (.75, .75, "G5"), (1.5, .5, "B5"), (2, 1, "D6"), (3, .5, "B5"), (3.5, .5, "A5")],
-        [(0, 2, "A5"), (2, .5, "F#5"), (2.5, .5, "G5"), (3, 1, "A5")],
-        b9,
-        [(0, .75, "G5"), (.75, .75, "E5"), (1.5, .5, "G5"), (2, 1, "C6"), (3, 1, "B5")],
-        [(0, .5, "A5"), (.5, .5, "C6"), (1, .5, "B5"), (1.5, .5, "A5"), (2, 1, "E5"), (3, 1, "G5")],
-        [(0, 1.5, "F#5"), (1.5, .5, "E5"), (2, 1, "D5"), (3, .5, "E5"), (3.5, .5, "F#5")],
-        [(0, 1, "G5"), (1, 1, "E5"), (2, 1, "C5"), (3, 1, "E5")],
-        [(0, 1, "F#5"), (1, 1, "D5"), (2, 1, "A4"), (3, 1, "D5")],
-        [(0, 1, "G5"), (1, 1, "B5"), (2, 1, "E5"), (3, 1, "G5")],
-        [(0, 1, "A5"), (1, .5, "F#5"), (1.5, .5, "E5"), (2, 1, "D5"), (3, .5, "E5"), (3.5, .5, "F#5")],
-    ]
-    for bar, chord in enumerate(chords):
-        section = 0 if bar < 8 else (1 if bar < 16 else 2)
-        add_melody(s, bar, melody[bar], "pluck", vel=0.8 if section != 2 else 0.65)
-        if section == 1:
-            add_melody(s, bar, melody[bar], "glock", vel=0.22, octave_shift=1)
-        # harmony: kalimba 16th arps in B, offbeat stabs in A and the turnaround
-        if section == 1:
-            arp16(s, bar, chord, 5, "kalimba", 0.42)
+    """'Potion Study' — calm and unobtrusive (puzzle focus): 4/4 in C major, 92 BPM, 16 bars = 41.7 s. Flowing harp
+    arpeggios over maj7/9 chords with a magical minor-iv (Fm6), a sparse music-box melody, a soft flute line in the
+    second half answered by music-box echoes, a quiet string pad and pizzicato bass, a brushed shaker, mark-tree
+    chimes into each half."""
+    s = Song("music_game", 92, 16, seed=202, bpb=4, reverb=(2.1, 2.8), mix={
+        "musicbox": 0, "flute": -2, "harp": -4, "celesta": -10, "pizz_bass": -9, "strings": -12.5,
+        "shaker": -19, "triangle": -18, "chimes": -13})
+    chords = ["Cmaj7", "Fmaj7", "Cmaj7", "Fmaj7", "Am7", "Fmaj7", "Dm7", "G7sus4",
+              "Cmaj7", "Em7", "Fmaj7", "Fm6", "Em7", "Am7", "Dm7", "G7sus4"]
+    V = {   # bass note, harp voicing (low -> high), pad voicing
+        "Cmaj7": ("C3", ["C3", "G3", "E4", "B4", "D5"], ["E4", "G4", "B4"]),
+        "Fmaj7": ("F2", ["F2", "C3", "A3", "E4", "G4"], ["A3", "C4", "E4"]),
+        "Am7": ("A2", ["A2", "E3", "G3", "C4", "E4"], ["C4", "E4", "G4"]),
+        "Dm7": ("D3", ["D3", "A3", "C4", "F4", "A4"], ["F4", "A4", "C5"]),
+        "G7sus4": ("G2", ["G2", "D3", "C4", "F4", "A4"], ["C4", "F4", "G4"]),
+        "G9": ("G2", ["G2", "D3", "B3", "F4", "A4"], ["B3", "F4", "G4"]),
+        "Em7": ("E3", ["E3", "B3", "D4", "G4", "B4"], ["D4", "G4", "B4"]),
+        "Fm6": ("F2", ["F2", "C3", "Ab3", "D4", "F4"], ["Ab3", "D4", "F4"]),
+    }
+    mel_mb = ["G5 1.5, E6 1.5, D6 1", "C6 3, r 1", "G5 1.5, E6 1.5, G6 1", "A6 2, G6 1, E6 1",
+              "r 1, C6 1, E6 1, G6 1", "A6 2, G6 1, C6 1", "D6 2, C6 1, A5 1", "C6 2, B5 2"]
+    mel_fl = ["E5 2, G5 1, B5 1", "B5 3, A5 1", "A5 2, G5 1, E5 1", "Ab5 3, G5 1",
+              "G5 2, E5 2", "C6 2, B5 1, A5 1", "F5 2, A5 1, C6 1", "D6 2, C6 2"]
+    echoes = {9: "r 2, B6 1, G6 1", 11: "r 2, C7 1, Ab6 1", 13: "r 2, E7 1, C7 1", 15: "r 2, D7 1, C7 1"}
+    melody(s, 0, mel_mb, "musicbox", 0.8)
+    melody(s, 4, mel_mb[4:], "celesta", 0.5, octave=-1)
+    melody(s, 8, mel_fl, "flute", 0.7, legato=0.95)
+    for bar, text in echoes.items():
+        seq(s, bar, text, "musicbox", 0.42)
+    pat = (0, 1, 2, 3, 4, 3, 2, 1)
+    for bar, ch in enumerate(chords):
+        bass, hv, pv = V[ch]
+        if bar == 7:                       # the melody resolves sus4 -> 3rd on beat 3: harp and pad follow
+            arp(s, bar, hv, pat, "harp", 0.5, end=2, ring=True)
+            arp(s, bar, V["G9"][1], pat[4:] + pat[:4], "harp", 0.5, start=2, ring=True)
+            hits(s, bar, (0,), pv, "strings", 0.4, dur=1.95)
+            hits(s, bar, (2,), V["G9"][2], "strings", 0.4, dur=1.95)
         else:
-            tones = CHORD_TONES[chord]
-            for off in (0.5, 1.5, 2.5, 3.5):
-                for tname in tones[:3]:
-                    m = midi(tone(tname, 4))
-                    if m < midi("G4"):
-                        m += 12
-                    s.add(bar * 4 + off, 0.3, m, 0.32, "kalimba")
-        if section == 2:
-            for tname in CHORD_TONES[chord][:3]:
-                m = midi(tone(tname, 4))
-                s.add(bar * 4, 3.9, m, 0.5, "pad")
-        # bass: eighth-note pulse with octave pops
-        r = root_of(chord, 2)
-        if r < midi("E2"):
-            r += 12
-        if section < 2:
-            pat = [0, 0, 12, 0, 0, 0, 12, 7] if bar % 2 else [0, 0, 12, 0, 0, 12, 0, 12]
-            for e, iv in enumerate(pat):
-                s.add(bar * 4 + e * 0.5, 0.38, r + iv, 0.8 if e % 2 == 0 else 0.62, "bass")
-        else:
-            for q in range(4):
-                s.add(bar * 4 + q, 0.85, r + (12 if q == 3 else 0), 0.75, "bass")
-        # drums
-        for q in range(4):
-            if section < 2 or q in (0, 2):
-                s.add(bar * 4 + q, 0.2, None, 0.85 if q in (0, 2) else 0.55, "kick")
-        for q in (1, 3):
-            s.add(bar * 4 + q, 0.2, None, 0.8, "clap")
-        for e in range(16):
-            s.add(bar * 4 + e * 0.25, 0.1, None, 0.75 if e % 4 == 2 else (0.5 if e % 2 else 0.35), "shaker")
-        for e in range(4):
-            s.add(bar * 4 + e + 0.5, 0.1, None, 0.6, "hat")
-        if bar in (7, 15):
-            s.add(bar * 4 + 3.5, 0.5, None, 0.5, "hat_open")
-        if bar == 19:     # tom fill into the loop start
-            for k, f in enumerate((220, 196, 165, 147)):
-                s.add(bar * 4 + 3 + k * 0.25, 0.25, fmidi(f), 0.6, "tom")
-        if bar in (7, 15):
-            s.add(bar * 4 + 2, 2, None, 1.0, "swell")
+            arp(s, bar, hv, pat, "harp", 0.5, ring=True)
+            hits(s, bar, (0,), pv, "strings", 0.4, dur=3.95)
+        s.add(bar * 4, 1.5, bass, 0.7, "pizz_bass")
+        s.add(bar * 4 + 2, 1.0, bass, 0.42, "pizz_bass")
+        for e in range(8):
+            s.add(bar * 4 + e * 0.5, 0.1, None, 0.36 if e % 2 == 0 else 0.22, "shaker")
+    s.add(0, 0.2, None, 0.6, "triangle")
+    s.add(8 * 4, 0.2, None, 0.6, "triangle")
+    s.add(7 * 4 + 3, 1.2, None, 0.7, "chimes")
+    s.add(15 * 4 + 3, 1.2, None, 0.7, "chimes")
     return s
 
 
 def song_hard():
-    """Driving, tense but cute, ~132 BPM, A minor: staccato pluck ostinato, octave bass, four-on-the-floor,
-    tick-tock woodblocks in the breakdown."""
-    s = Song("music_hard", 132, 24, seed=303, mix={
-        "pluck": 0, "marimba": -6.5, "kalimba": -6, "bass": -3.5, "kick": -4.5, "snare": -6.5, "clap": -11,
-        "hat": -12.5, "wood": -10, "pad": -9, "tom": -5, "swell": -13})
-    chords = ["Am", "F", "C", "G", "Am", "F", "E", "E",
-              "Dm", "Am", "Dm", "E", "F", "G", "Am", "E",
-              "F", "G", "Em", "Am", "F", "G", "E", "E"]
-    CHORD_TONES.setdefault("Am", ["A", "C", "E"])
-    b1 = [(0, .5, "E5"), (.5, .5, "A5"), (1, .5, "C6"), (1.5, .5, "B5"), (2, .5, "A5"), (2.5, .5, "E5"), (3, 1, "A5")]
-    melody = [
-        b1,
-        [(0, .5, "F5"), (.5, .5, "A5"), (1, .5, "C6"), (1.5, .5, "A5"), (2, 1, "F5"), (3, .5, "G5"), (3.5, .5, "A5")],
-        [(0, .5, "G5"), (.5, .5, "E5"), (1, .5, "C5"), (1.5, .5, "E5"), (2, 1, "G5"), (3, 1, "C6")],
-        [(0, 1.5, "B5"), (1.5, .5, "A5"), (2, 1, "G5"), (3, 1, "D5")],
-        b1,
-        [(0, .5, "A5"), (.5, .5, "C6"), (1, 1, "C6"), (2, .5, "A5"), (2.5, .5, "G5"), (3, 1, "F5")],
-        [(0, .5, "E5"), (.5, .5, "G#5"), (1, .5, "B5"), (1.5, .5, "G#5"), (2, .5, "E5"), (2.5, .5, "B4"), (3, 1, "E5")],
-        [(0, 2, "G#5"), (2, 1, "B5"), (3, 1, "D6")],
-        [(0, 1, "D6"), (1, .5, "A5"), (1.5, .5, "F5"), (2, 1, "D5"), (3, .5, "E5"), (3.5, .5, "F5")],
-        [(0, 1, "E5"), (1, .5, "A5"), (1.5, .5, "C6"), (2, 1, "C6"), (3, 1, "A5")],
-        [(0, .5, "F5"), (.5, .5, "A5"), (1, .5, "D6"), (1.5, .5, "C6"), (2, .5, "A5"), (2.5, .5, "F5"), (3, 1, "D5")],
-        [(0, 1, "B4"), (1, 1, "E5"), (2, 1, "G#5"), (3, 1, "B5")],
-        [(0, .5, "C6"), (.5, .5, "A5"), (1, .5, "F5"), (1.5, .5, "A5"), (2, 1, "C6"), (3, 1, "A5")],
-        [(0, .5, "D6"), (.5, .5, "B5"), (1, .5, "G5"), (1.5, .5, "B5"), (2, 1, "D6"), (3, 1, "B5")],
-        [(0, 1.5, "C6"), (1.5, .5, "B5"), (2, 1, "A5"), (3, 1, "E5")],
-        [(0, 1, "G#5"), (1, 1, "B5"), (2, 2, "E5")],
-        [(e * .5, .4, "A5") for e in range(8)],
-        [(e * .5, .4, "B5") for e in range(8)],
-        [(e * .5, .4, "B5" if e % 2 == 0 else "G5") for e in range(8)],
-        [(e * .5, .4, "C6" if e % 2 == 0 else "A5") for e in range(8)],
-        [(0, .5, "A5"), (.5, .5, "C6"), (1, 1, "F5"), (2, .5, "A5"), (2.5, .5, "C6"), (3, 1, "A5")],
-        [(0, .5, "B5"), (.5, .5, "D6"), (1, 1, "G5"), (2, .5, "B5"), (2.5, .5, "D6"), (3, 1, "B5")],
-        [(0, .5, "G#5"), (.5, .5, "B5"), (1, .5, "D6"), (1.5, .5, "B5"), (2, .5, "G#5"), (2.5, .5, "E5"), (3, 1, "B4")],
-        [(0, 1, "E5"), (1, 1, "G#5"), (2, 1, "B5"), (3, 1, "D6")],
-    ]
-    for bar, chord in enumerate(chords):
-        section = bar // 8
-        breakdown = 16 <= bar < 20
-        mel_vel = 0.62 if breakdown else 0.8
-        crescendo = (bar - 16) / 4 if breakdown else 0
-        notes = melody[bar]
-        if breakdown:
-            for beat, dur, note in notes:
-                s.add(bar * 4 + beat, dur, note, (0.45 + 0.35 * (crescendo + beat / 16)), "pluck")
-        else:
-            add_melody(s, bar, notes, "pluck", vel=mel_vel)
-            add_melody(s, bar, notes, "kalimba", vel=0.3, octave_shift=1 if section == 1 else 0)
-        # 16th ostinato (marimba, low velocity) outlining the chord
-        arp16(s, bar, chord, 4, "marimba", 0.36, pattern=(0, 2, 1, 2, 3, 2, 1, 2))
-        # pad for tension
-        for tname in CHORD_TONES[chord][:3]:
-            m = midi(tone(tname, 3))
-            if m < midi("E3"):
-                m += 12
-            s.add(bar * 4, 3.95, m, 0.42 if section != 2 else 0.55, "pad")
-        # bass: driving octave eighths
-        r = root_of(chord, 2)
-        if r < midi("E2"):
-            r += 12
-        pat = [0, 0, 12, 0, 0, 12, 0, 12]
-        for e, iv in enumerate(pat):
-            s.add(bar * 4 + e * 0.5, 0.3, r + iv, 0.85 if e % 2 == 0 else 0.65, "bass")
-        # drums
-        for q in range(4):
-            s.add(bar * 4 + q, 0.2, None, 0.9 if not breakdown else 0.55, "kick")
-        if not breakdown:
-            for q in (1, 3):
-                s.add(bar * 4 + q, 0.2, None, 0.75, "snare")
-                s.add(bar * 4 + q, 0.2, None, 0.35, "clap")
+    """'Bubbling Cauldron' — a bit mysterious and tense but cute: 4/4 in A minor, 120 BPM, 20 bars = 40.0 s. A sneaky
+    staccato pizzicato ostinato over the chromatic line cliché (A G# G F# F), a celesta melody with chromatic
+    neighbours (music box doubling it the second time), finger snaps on 2 and 4, soft kick and timpani-like toms,
+    a low string pad, harp glissandos, and a tick-tock woodblock building the last four bars back into the loop."""
+    s = Song("music_hard", 120, 20, seed=303, bpb=4, reverb=(1.5, 2.0), mix={
+        "celesta": 0, "musicbox": -7, "pizz": -4.5, "pizz_bass": -4, "kick_soft": -8, "snap": -10.5, "tom": -9,
+        "strings": -12.5, "harp": -9, "chimes_down": -13, "shaker": -18, "wood": -14, "triangle": -18},
+        pans={"celesta": 0.1, "pizz": -0.3, "snap": -0.12})
+    chords = ["Am", "Am/G#", "Am/G", "D/F#", "F", "Dm", "E7sus4", "E7",
+              "Am", "Am/G#", "Am/G", "D/F#", "F", "G", "E7", "Am",
+              "Dm", "F", "E7sus4", "E7"]
+    V = {   # bass note, ostinato / pad voicing (low, mid, high)
+        "Am": ("A2", ["A3", "C4", "E4"]),
+        "Am/G#": ("G#2", ["G#3", "C4", "E4"]),
+        "Am/G": ("G2", ["G3", "C4", "E4"]),
+        "D/F#": ("F#2", ["F#3", "A3", "D4"]),
+        "F": ("F2", ["F3", "A3", "C4"]),
+        "Dm": ("D2", ["F3", "A3", "D4"]),
+        "E7sus4": ("E2", ["E3", "A3", "B3"]),
+        "E7": ("E2", ["E3", "G#3", "D4"]),
+        "G": ("G2", ["G3", "B3", "D4"]),
+    }
+    mel_a = ["A5 .5, C6 .5, E6 1, D#6 .5, E6 .5, C6 1", "B5 1.5, A5 .5, G#5 1, E5 1",
+             "A5 .5, C6 .5, E6 1, F6 .5, E6 .5, C6 1", "D6 1.5, C6 .5, A5 1, F#5 1",
+             "F5 .5, A5 .5, C6 1, E6 1, C6 1", "D6 1, A5 1, F5 .5, E5 .5, D5 1",
+             "E5 1, A5 1, B5 1, D6 1", "G#5 2, E5 1, r 1"]
+    mel_a2 = mel_a[:4] + ["C6 .5, A5 .5, F5 1, A5 1, C6 1", "D6 .5, B5 .5, G5 1, B5 1, D6 1",
+                          "E6 1, D6 1, B5 1, G#5 1", "A5 2, r 2"]
+    mel_b = ["D6 .5, A5 .5, F5 .5, A5 .5, D6 .5, A5 .5, F5 .5, A5 .5",
+             "C6 .5, A5 .5, F5 .5, A5 .5, C6 .5, A5 .5, F5 .5, A5 .5",
+             "B5 .5, A5 .5, E5 .5, A5 .5, B5 .5, A5 .5, E5 .5, A5 .5",
+             "B5 .5, G#5 .5, E5 .5, G#5 .5, B5 .5, D6 .5, E6 .5, G#5 .5"]
+    melody(s, 0, mel_a, "celesta", 0.8)
+    melody(s, 8, mel_a2, "celesta", 0.8)
+    melody(s, 8, mel_a2, "musicbox", 0.45, octave=1)
+    melody(s, 16, mel_b, "celesta", 0.8, ramp=(0.55, 0.85))
+    ost = (0, 2, 1, 2, 0, 2, 1, 2)
+    acc = (1.0, 0.62, 0.8, 0.62, 0.92, 0.62, 0.8, 0.62)
+    for bar, ch in enumerate(chords):
+        bass, vo = V[ch]
+        for e in range(8):
+            s.add(bar * 4 + e * 0.5, 0.3, vo[ost[e]], 0.6 * acc[e], "pizz")
+        up = midi(bass) + 12
+        for q, (m, v) in enumerate(((bass, 0.85), (up, 0.5), (bass, 0.72), (up, 0.5))):
+            s.add(bar * 4 + q, 0.5, m, v, "pizz_bass")
+        if bar >= 8:
+            hits(s, bar, (0,), vo, "strings", 0.45 if bar < 16 else 0.55, dur=3.95)
+        s.add(bar * 4, 0.2, None, 0.8, "kick_soft")
+        s.add(bar * 4 + 2, 0.2, None, 0.6, "kick_soft")
+        s.add(bar * 4 + 1, 0.1, None, 0.7, "snap")
+        s.add(bar * 4 + 3, 0.1, None, 0.7, "snap")
         for e in range(16):
-            s.add(bar * 4 + e * 0.25, 0.1, None, 0.65 if e % 2 else 0.35, "hat")
-        if breakdown or bar >= 20:
+            s.add(bar * 4 + e * 0.25, 0.1, None, 0.5 if e % 4 == 2 else (0.32 if e % 2 else 0.22), "shaker")
+        if bar >= 16:
             for e in range(8):
-                s.add(bar * 4 + e * 0.5, 0.1, fmidi(2300 if e % 2 == 0 else 1750), 0.5, "wood")
-        if bar in (7, 15, 23):
-            for k, f in enumerate((262, 220, 185, 147)):
-                s.add(bar * 4 + 3 + k * 0.25, 0.25, fmidi(f), 0.65, "tom")
-        if bar in (7, 15, 19):
-            s.add(bar * 4 + 2, 2, None, 1.0, "swell")
+                s.add(bar * 4 + e * 0.5, 0.1, fmidi(2300 if e % 2 == 0 else 1750), 0.4 + 0.1 * (bar - 16), "wood")
+    for bar in (0, 4, 8, 12):
+        s.add(bar * 4, 0.3, fmidi(110), 0.6, "tom")
+    for k, f in enumerate((196, 165, 147, 131)):          # timpani fill into the loop start
+        s.add(19 * 4 + 3 + k * 0.25, 0.25, fmidi(f), 0.55 + 0.05 * k, "tom")
+    s.add(0, 0.2, None, 0.6, "triangle")
+    s.add(8 * 4, 0.2, None, 0.6, "triangle")
+    gliss(s, 7 * 4 + 3, scale_run("A", "harm_minor", "A3", "A5"), 0.9, vel=0.5)
+    gliss(s, 15 * 4 + 3, scale_run("A", "harm_minor", "E4", "E6"), 0.9, vel=0.5)
+    s.add(19 * 4 + 2, 1.5, None, 0.7, "chimes_down")
     return s
 
 
@@ -1435,11 +1766,77 @@ def decode_audio(path):
     return np.frombuffer(raw, dtype=np.float32).reshape(-1, ch)
 
 
+# ============================================================================================ preview sheets
+
+def _colormap(v):
+    """[0, 1] -> RGB (night violet -> magenta -> amber -> cream)."""
+    stops = np.array([[0.0, 10, 6, 24], [0.3, 70, 20, 110], [0.55, 190, 50, 120], [0.78, 250, 145, 60],
+                      [1.0, 255, 246, 200]])
+    return np.stack([np.interp(v, stops[:, 0], stops[:, c]) for c in (1, 2, 3)], axis=-1).astype(np.uint8)
+
+
+def render_preview(names, path, px_per_s=700, cols=2):
+    """Waveform + log-frequency spectrogram (60 Hz - 16 kHz, 80 dB range) of each sfx, on a common time scale."""
+    from PIL import Image, ImageDraw, ImageFont
+    clips = []
+    for name in names:
+        p = os.path.join(OUT, f"sfx_{name}.wav")
+        if os.path.exists(p):
+            sr, y = wavfile.read(p)
+            clips.append((name, y.astype(np.float64) / 32768.0))
+    if not clips:
+        return None
+    try:
+        font = ImageFont.load_default(size=15)
+    except TypeError:
+        font = ImageFont.load_default()
+    W = int(px_per_s * max(len(y) for _, y in clips) / SR) + 16
+    WAVE_H, SPEC_H, HEAD = 70, 190, 24
+    tile_h = HEAD + WAVE_H + SPEC_H + 12
+    rows = (len(clips) + cols - 1) // cols
+    sheet = Image.new("RGB", (cols * W + 8, rows * tile_h + 8), (24, 18, 36))
+    fgrid = np.geomspace(60, 16000, SPEC_H)[::-1]
+    for i, (name, y) in enumerate(clips):
+        x0, y0 = 8 + (i % cols) * W, 8 + (i // cols) * tile_h
+        d = ImageDraw.Draw(sheet)
+        dur = len(y) / SR
+        d.text((x0, y0 + 2), f"sfx_{name}   {dur:.2f} s   peak {db(np.max(np.abs(y))):.1f} dB   "
+                             f"M {momentary_max(y):.1f} LUFS", fill=(235, 225, 255), font=font)
+        w = max(2, int(px_per_s * dur))
+        cols_idx = np.linspace(0, len(y), w + 1).astype(int)
+        top = y0 + HEAD
+        d.rectangle([x0, top, x0 + W - 12, top + WAVE_H], fill=(14, 10, 26))
+        # peak envelope over >= 5 ms per column (a plain per-column min/max shows moire on steady tones when zoomed)
+        env = maximum_filter1d(np.abs(y), max(samples(0.005), len(y) // w + 1))
+        for c in range(w):
+            a = float(env[min(len(y) - 1, (cols_idx[c] + cols_idx[c + 1]) // 2)])
+            d.line([x0 + c, top + WAVE_H / 2 - a * WAVE_H / 2, x0 + c, top + WAVE_H / 2 + a * WAVE_H / 2],
+                   fill=(150, 210, 255))
+        f, t, Z = signal.stft(y, SR, nperseg=1024, noverlap=1024 - 64)
+        S = 20 * np.log10(np.abs(Z) + 1e-9)
+        S = np.clip((S - (S.max() - 80)) / 80, 0, 1)
+        fi = np.clip(np.searchsorted(f, fgrid), 0, len(f) - 1)
+        ti = np.clip(np.searchsorted(t, np.linspace(0, dur, w)), 0, len(t) - 1)
+        img = Image.fromarray(_colormap(S[fi][:, ti]))
+        sheet.paste(img, (x0, top + WAVE_H + 4))
+        for fl in (100, 1000, 10000):
+            yy = top + WAVE_H + 4 + int(np.searchsorted(-fgrid, -fl))
+            d.text((x0 + 2, yy - 8), f"{fl // 1000}k" if fl >= 1000 else f"{fl}", fill=(255, 255, 255), font=font)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    sheet.save(path)
+    return path
+
+
 # ============================================================================================ main
 
+def sfx_seed(name):
+    """Stable per-sound seed (independent of the list order)."""
+    return zlib.crc32(name.encode("utf-8"))
+
+
 def gen_sfx(names, rows):
-    for i, name in enumerate(names):
-        rng = np.random.default_rng(1000 + SFX_NAMES.index(name))
+    for name in names:
+        rng = np.random.default_rng(sfx_seed(name))
         x = finalize_sfx(globals()["sfx_" + name](rng))
         path = os.path.join(OUT, f"sfx_{name}.wav")
         write_wav16(path, x, rng)
@@ -1447,6 +1844,7 @@ def gen_sfx(names, rows):
         y = y.astype(np.float64) / 32768.0
         rows.append({
             "name": f"sfx_{name}", "dur": len(y) / sr, "peak": db(np.max(np.abs(y))), "lufs": lufs(y),
+            "mmax": momentary_max(y),
             # what a phone speaker reproduces (nothing much below ~300 Hz): catches sounds whose peak is all sub-bass
             "lufs_phone": lufs(sos_filter(y, "high", 300, order=4)),
             "dc": float(np.mean(y)), "edge": max(abs(y[0]), abs(y[-1])), "nan": bool(np.isnan(x).any()),
@@ -1469,20 +1867,23 @@ def gen_music(names, rows, tmp):
         jump = float(np.max(np.abs(x[0] - x[-1])))
         step = float(np.percentile(np.abs(np.diff(x, axis=0)), 99.9))
         row = {
-            "name": name, "bpm": song.bpm, "bars": song.bars, "dur": len(x) / SR, "lufs": lufs(x),
-            "peak": db(np.max(np.abs(x))), "jump": jump, "step999": step, "enc": enc,
+            "name": name, "bpm": song.bpm, "bars": song.bars, "meter": f"{song.bpb}/4", "dur": len(x) / SR,
+            "lufs": lufs(x), "peak": db(np.max(np.abs(x))), "jump": jump, "step999": step, "enc": enc,
             "size_kb": os.path.getsize(ogg) / 1024, "events": len(song.events),
         }
         if dec is not None:
             row["dec_len_diff"] = len(dec) - len(x)
             row["dec_peak"] = db(float(np.max(np.abs(dec))))
             row["dec_jump"] = float(np.max(np.abs(dec[0] - dec[-1])))
+            row["dec_step999"] = float(np.percentile(np.abs(np.diff(dec, axis=0)), 99.9))
         rows.append(row)
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--only", help="sfx | music | a single name (e.g. match, music_home)")
+    ap.add_argument("--only", help="sfx | music | board | a single name (e.g. pour, music_home)")
+    ap.add_argument("--prune", action="store_true", help="delete clips no enum value uses (and their .meta)")
+    ap.add_argument("--preview", action="store_true", help="write board-sound sheets to ArtSource/preview/")
     args = ap.parse_args()
     os.makedirs(OUT, exist_ok=True)
 
@@ -1492,6 +1893,8 @@ def main():
         music = []
     elif args.only == "music":
         sfx = []
+    elif args.only == "board":
+        sfx, music = BOARD_SFX, []
     elif args.only:
         key = args.only.replace("sfx_", "")
         sfx = [key] if key in SFX_NAMES else []
@@ -1499,37 +1902,72 @@ def main():
         if not sfx and not music:
             sys.exit(f"unknown sound {args.only}")
 
+    problems = []
+    for kind, ours in (("Sfx", SFX_NAMES), ("Music", [n.replace("music_", "") for n in SONGS])):
+        names = enum_names(kind)
+        if names is None:
+            print(f"warning: could not read enum {kind} from {ENUM_SRC}")
+            continue
+        if kind == "Music":
+            names = [n for n in names if n != "none"]
+        if names != ours:
+            print(f"enum {kind} mismatch:\n  C#:     {names}\n  script: {ours}")
+            problems.append(f"enum {kind}")
+
     sfx_rows, music_rows = [], []
     gen_sfx(sfx, sfx_rows)
     with tempfile.TemporaryDirectory() as tmp:
         gen_music(music, music_rows, tmp)
 
-    problems = []
     if sfx_rows:
-        print(f"\n{'SFX':22s} {'dur s':>6s} {'peak dB':>8s} {'LUFS':>6s} {'>300Hz':>6s} {'DC':>9s} {'edge':>7s} {'clip':>4s}")
+        print(f"\n{'SFX':22s} {'dur s':>6s} {'peak dB':>8s} {'LUFS':>6s} {'Mmax':>6s} {'>300Hz':>6s} {'DC':>9s} "
+              f"{'edge':>7s} {'clip':>4s}")
         for r in sfx_rows:
-            print(f"{r['name']:22s} {r['dur']:6.2f} {r['peak']:8.2f} {r['lufs']:6.1f} {r['lufs_phone']:6.1f} {r['dc']:9.1e} "
-                  f"{r['edge']:7.4f} {r['clip']:4d}")
+            print(f"{r['name']:22s} {r['dur']:6.2f} {r['peak']:8.2f} {r['lufs']:6.1f} {r['mmax']:6.1f} "
+                  f"{r['lufs_phone']:6.1f} {r['dc']:9.1e} {r['edge']:7.4f} {r['clip']:4d}")
             if r["nan"] or r["clip"] or abs(r["peak"] - SFX_PEAK_DB) > 0.15 or r["edge"] > 0.003 or abs(r["dc"]) > 2e-3:
                 problems.append(r["name"])
     if music_rows:
-        print(f"\n{'MUSIC':12s} {'bpm':>4s} {'bars':>4s} {'dur s':>6s} {'LUFS':>6s} {'peak':>6s} {'loop jump':>9s} "
-              f"{'p99.9 step':>10s} {'dec Δn':>6s} {'dec peak':>8s} {'dec jump':>8s} {'KB':>6s}  encoder")
+        print(f"\n{'MUSIC':12s} {'bpm':>4s} {'bars':>4s} {'meter':>5s} {'dur s':>6s} {'LUFS':>6s} {'peak':>6s} "
+              f"{'loop jump':>9s} {'p99.9 step':>10s} {'dec Δn':>6s} {'dec peak':>8s} {'dec jump':>8s} {'KB':>6s}  encoder")
         for r in music_rows:
-            print(f"{r['name']:12s} {r['bpm']:4d} {r['bars']:4d} {r['dur']:6.2f} {r['lufs']:6.1f} {r['peak']:6.2f} "
-                  f"{r['jump']:9.4f} {r['step999']:10.4f} {r.get('dec_len_diff', 0):6d} {r.get('dec_peak', 0):8.2f} "
-                  f"{r.get('dec_jump', 0):8.4f} {r['size_kb']:6.0f}  {r['enc']}")
-            if r["jump"] > r["step999"] or abs(r["lufs"] - MUSIC_LUFS) > 1.0 or r["peak"] > -1.0:
+            print(f"{r['name']:12s} {r['bpm']:4d} {r['bars']:4d} {r['meter']:>5s} {r['dur']:6.2f} {r['lufs']:6.1f} "
+                  f"{r['peak']:6.2f} {r['jump']:9.4f} {r['step999']:10.4f} {r.get('dec_len_diff', 0):6d} "
+                  f"{r.get('dec_peak', 0):8.2f} {r.get('dec_jump', 0):8.4f} {r['size_kb']:6.0f}  {r['enc']}")
+            bad_dec = "dec_jump" in r and (r["dec_jump"] > r["dec_step999"] or r["dec_len_diff"] != 0)
+            if r["jump"] > r["step999"] or abs(r["lufs"] - MUSIC_LUFS) > 1.0 or r["peak"] > -1.0 or bad_dec:
                 problems.append(r["name"])
+
     expected = {f"sfx_{n}.wav" for n in SFX_NAMES} | {f"{n}.ogg" for n in SONGS}
     present = {f for f in os.listdir(OUT) if f.endswith((".wav", ".ogg"))}
     missing = sorted(expected - present)
     extra = sorted(present - expected)
+    if extra and args.prune:
+        for f in extra:
+            for p in (os.path.join(OUT, f), os.path.join(OUT, f + ".meta")):
+                if os.path.exists(p):
+                    os.remove(p)
+        print("pruned:", extra)
+        extra = []
     if missing:
         print("missing:", missing)
     if extra:
-        print("unexpected files in Audio/:", extra)
-    print("\nOK" if not problems and not missing else f"\nCHECK: {problems} {missing}")
+        print("unexpected files in Audio/ (run with --prune to delete):", extra)
+    if args.preview:
+        durs = {}
+        for n in BOARD_SFX:
+            p = os.path.join(OUT, f"sfx_{n}.wav")
+            if os.path.exists(p):
+                sr, y = wavfile.read(p)
+                durs[n] = len(y) / sr
+        short = [n for n in BOARD_SFX if durs.get(n, 9) < 0.8]
+        long_ = [n for n in BOARD_SFX if n in durs and n not in short]
+        for tag, part in (("short", short), ("long", long_)):
+            if part:
+                pps = int(1100 / max(durs[n] for n in part))
+                p = render_preview(part, os.path.join(PREVIEW, f"audio_board_{tag}.png"), px_per_s=pps)
+                print("preview:", os.path.relpath(p, ROOT))
+    print("\nOK" if not problems and not missing and not extra else f"\nCHECK: {problems} {missing} {extra}")
 
 
 if __name__ == "__main__":
