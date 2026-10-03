@@ -630,7 +630,7 @@ namespace PotionPop.Tests
             AuthUser b = MockAuthProvider.CreateUser(AuthProvider.Google);
             Assert.AreEqual(a.uid, b.uid);
             StringAssert.StartsWith("mock-", a.uid);
-            Assert.AreEqual("Mimi Fan", a.displayName);
+            Assert.AreEqual("Luna Fan", a.displayName);
             Assert.IsTrue(a.isMock);
             Assert.AreEqual(AuthProvider.Apple, a.provider);
             Assert.AreEqual(AuthProvider.Mock, MockAuthProvider.CreateUser(AuthProvider.None).provider);
