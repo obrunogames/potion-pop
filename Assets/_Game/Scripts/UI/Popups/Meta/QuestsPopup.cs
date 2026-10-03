@@ -148,11 +148,11 @@ namespace PotionPop.UI
                 case QuestKind.WinLevels: return "icon_trophy";
                 case QuestKind.CompleteBottles: return "icon_bottle";
                 case QuestKind.ReachCombo: return "icon_flame";
-                case QuestKind.UseBoosters: return "booster_undo";
+                case QuestKind.UseBoosters: return "booster_wand";
                 case QuestKind.CollectStars: return "icon_star";
                 case QuestKind.WinHard: return "icon_skull";
                 case QuestKind.WinStreak2: return "icon_medal_gold";
-                case QuestKind.WinThreeStars: return "icon_star";
+                case QuestKind.WinThreeStars: return "icon_crown";
                 default: return "icon_quest";
             }
         }

@@ -6,9 +6,10 @@ using UnityEngine.UI;
 namespace PotionPop.UI
 {
     /// <summary>
-    /// Collection tab: album chips (one per area, accent colored, locked areas show a padlock), album header (area
-    /// name, x/12 progress, reward preview or Claim), a 3-column grid of the 12 cards (owned = gold frame + product,
-    /// missing = card back with a silhouette and "?"); tapping an owned card opens it enlarged with a wiggle.
+    /// Collection tab: album chips (one per world, accent colored with the album's first card; locked worlds show a
+    /// padlock), album header (world name and art, x/9 progress, reward preview, Claim or Claimed), a 3x3 grid of the
+    /// 9 magical cards (owned = gold frame + item art + name, missing = card back with the item's silhouette and "?");
+    /// tapping an owned card opens the card detail popup with a wiggle.
     /// </summary>
     public class CollectionScreen : TabScreen
     {
@@ -27,7 +28,7 @@ namespace PotionPop.UI
 
         sealed class CardCell
         {
-            public string productId;
+            public string cardId;
             public bool owned;
             public RectTransform root, visual;
         }
@@ -133,10 +134,10 @@ namespace PotionPop.UI
             var shine = UIKit.RoundedRect(c.bg.rectTransform, new Vector2(w - 24f, 34f), DS.WithAlpha(Color.white, 0.3f), 17f);
             UIKit.Place(shine.rectTransform, new Vector2(0.5f, 1f), new Vector2(w - 24f, 34f), new Vector2(0f, -8f));
 
-            string iconProduct = area.productIds != null && area.productIds.Length > 0 ? area.productIds[0] : null;
-            // Icon (top) and x/12 count (bottom) must not overlap: 150 = 8 + 84 icon + 4 + 44 count + 10 lip.
+            string iconCard = area.cardIds != null && area.cardIds.Length > 0 ? area.cardIds[0] : null;
+            // Icon (top) and x/9 count (bottom) must not overlap: 150 = 8 + 84 icon + 4 + 44 count + 10 lip.
             float iconS = Mathf.Min(w * 0.55f, 84f);
-            c.icon = UIKit.Image(c.visual, iconProduct != null ? "p_" + iconProduct : "icon_collection", new Vector2(iconS, iconS));
+            c.icon = UIKit.Image(c.visual, iconCard != null ? Catalog.CardSprite(iconCard) : "icon_collection", new Vector2(iconS, iconS));
             UIKit.Place(c.icon.rectTransform, new Vector2(0.5f, 1f), new Vector2(iconS, iconS), new Vector2(0f, -8f));
             c.lockIcon = UIKit.Image(c.visual, "icon_lock", new Vector2(iconS * 0.8f, iconS * 0.8f));
             UIKit.Place(c.lockIcon.rectTransform, new Vector2(0.5f, 1f), new Vector2(iconS * 0.8f, iconS * 0.8f), new Vector2(0f, -14f));
@@ -314,21 +315,23 @@ namespace PotionPop.UI
                 var caption = CommonUI.LocLabel(root, "tabs.col.complete_to_win", TextStyle.BodyLight, new Vector2(textW, 46f),
                     TextAlignmentOptions.Left, 34f);
                 UIKit.Place(caption.rectTransform, new Vector2(0f, 0f), new Vector2(textW, 46f), new Vector2(34f, 100f));
+                // 500 coins + one of each booster: the booster icons share what is left of the row.
                 var rewards = Collection.AlbumRewards();
                 float x = 34f;
+                float boosterS = rewards.Length > 1 ? Mathf.Clamp((textW - 34f - 72f - 126f) / (rewards.Length - 1) - 4f, 40f, 60f) : 60f;
                 for (int i = 0; i < rewards.Length; i++)
                 {
-                    float s = i == 0 ? 72f : 60f;
+                    float s = i == 0 ? 72f : boosterS;
+                    if (x + s > textW + 20f) break;
                     var ic = UIKit.Image(root, rewards[i].IconSprite, new Vector2(s, s));
-                    UIKit.Place(ic.rectTransform, new Vector2(0f, 0f), new Vector2(s, s), new Vector2(x, 28f));
-                    x += s + 6f;
+                    UIKit.Place(ic.rectTransform, new Vector2(0f, 0f), new Vector2(s, s), new Vector2(x, i == 0 ? 28f : 34f));
+                    x += s + 4f;
                     if (i == 0)
                     {
                         var amt = CommonUI.Label(root, rewards[i].AmountText, TextStyle.H3, new Vector2(120f, 60f), TextAlignmentOptions.Left, 44f);
                         UIKit.Place(amt.rectTransform, new Vector2(0f, 0f), new Vector2(120f, 60f), new Vector2(x, 36f));
-                        x += 120f;
+                        x += 122f;
                     }
-                    if (x > textW) break;
                 }
             }
             return root;
@@ -340,15 +343,15 @@ namespace PotionPop.UI
             float gapX = DS.Space.M, gapY = DS.Space.L;
             float cw = Mathf.Min(270f, (_w - gapX * (cols - 1)) / cols);
             float ch = cw * CommonUI.CardAspect;
-            int count = area.productIds != null ? area.productIds.Length : 0;
+            int count = area.cardIds != null ? area.cardIds.Length : 0;
             int rows = (count + cols - 1) / cols;
             var grid = UIKit.Grid(_list, new Vector2(_w, rows * ch + Mathf.Max(0, rows - 1) * gapY + DS.Space.S),
                 new Vector2(cw, ch), new Vector2(gapX, gapY), cols);
             grid.transform.SetSiblingIndex(1);
             for (int i = 0; i < count; i++)
             {
-                string id = area.productIds[i];
-                var cell = new CardCell { productId = id, owned = Collection.Has(id) };
+                string id = area.cardIds[i];
+                var cell = new CardCell { cardId = id, owned = Collection.Has(id) };
                 cell.root = UIKit.Rect("Card_" + id, grid.transform);
                 cell.visual = UIKit.Stretch(UIKit.Rect("Visual", cell.root));
                 var face = cell.owned ? CommonUI.CardFront(cell.visual, id, cw) : CommonUI.CardBack(cell.visual, cw, true, id);
@@ -372,7 +375,7 @@ namespace PotionPop.UI
             if (c.owned)
             {
                 Tween.Punch(c.visual, 0.1f, 0.25f);
-                CardZoomPopup.Open(c.productId);
+                CardZoomPopup.Open(c.cardId);
             }
             else
             {

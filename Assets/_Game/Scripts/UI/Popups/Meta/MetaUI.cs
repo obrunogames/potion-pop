@@ -1,6 +1,7 @@
 // ============================================================================================================
-// Shared building blocks of the Home meta popups: reward items (icon + amount), styled labels, a check stamp,
-// the slowly spinning sunburst and small animation helpers. Everything goes through the design system (UIKit/DS).
+// Shared building blocks of the Home meta popups and the Worlds screen: reward items (icon + amount), styled labels,
+// a check stamp, star rows, localized world names, the slowly spinning sunburst and small animation helpers.
+// Everything goes through the design system (UIKit/DS).
 // ============================================================================================================
 using System.Collections.Generic;
 using TMPro;
@@ -23,8 +24,8 @@ namespace PotionPop.UI
             {
                 var frame = UIKit.Image(holder, "card_frame", new Vector2(iconSize * 0.72f, iconSize));
                 UIKit.Stretch(frame.rectTransform);
-                var product = UIKit.Image(holder, r.IconSprite, new Vector2(iconSize * 0.6f, iconSize * 0.6f));
-                UIKit.Place(product.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(iconSize * 0.56f, iconSize * 0.56f), new Vector2(0f, iconSize * 0.05f));
+                var item = UIKit.Image(holder, r.IconSprite, new Vector2(iconSize * 0.6f, iconSize * 0.6f));
+                UIKit.Place(item.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(iconSize * 0.56f, iconSize * 0.56f), new Vector2(0f, iconSize * 0.05f));
             }
             else
             {
@@ -162,6 +163,94 @@ namespace PotionPop.UI
             Vector2 p = FX.LocalCenterOf(at);
             FX.Sparkles(sm.FxLayer, p, sparkles);
             if (stars > 0) FX.Burst(sm.FxLayer, p, "ui_star_small", stars, DS.Colors.Gold, 700f, 0.75f, 40f, -1200f);
+        }
+
+        // ---------------------------------------------------------------------------------------- stars
+
+        /// <summary>Tint of an empty star slot (deep plum, translucent): reads as a hole waiting for a star.</summary>
+        public static readonly Color EmptyStar = new Color(0.23f, 0.12f, 0.36f, 0.42f);
+
+        /// <summary>
+        /// Row of 3 stars (children "Star0..2"): the first <paramref name="filled"/> golden, the others empty slots. With
+        /// an arc the middle star is raised and the outer ones tilt outwards (level map nodes, replay best).
+        /// </summary>
+        public static RectTransform StarRow(Transform parent, int filled, float starSize, float spacing, float arc = 0f)
+        {
+            var root = UIKit.Rect("Stars", parent);
+            if (root == null) return null;
+            root.sizeDelta = new Vector2(starSize * 3f + spacing * 2f, starSize + arc);
+            for (int i = 0; i < 3; i++)
+            {
+                var img = UIKit.Image(root, "icon_star", new Vector2(starSize, starSize));
+                img.name = "Star" + i;
+                float x = (i - 1) * (starSize + spacing);
+                float y = (i == 1 ? arc : 0f) - arc * 0.5f;
+                UIKit.Place(img.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(starSize, starSize), new Vector2(x, y));
+                if (arc > 0f) img.rectTransform.localEulerAngles = new Vector3(0f, 0f, (1 - i) * 12f);
+            }
+            SetStars(root, filled);
+            return root;
+        }
+
+        /// <summary>Recolors a row built by <see cref="StarRow"/>.</summary>
+        public static void SetStars(RectTransform row, int filled)
+        {
+            if (row == null) return;
+            for (int i = 0; i < 3; i++)
+            {
+                var t = row.Find("Star" + i);
+                var img = t != null ? t.GetComponent<Image>() : null;
+                if (img != null) img.color = i < filled ? Color.white : EmptyStar;
+            }
+        }
+
+        /// <summary>Pops the filled stars of a row in one by one (with a sparkle and a rising "star" sound).</summary>
+        public static void PopStars(RectTransform row, int filled, float delay, bool sound = true)
+        {
+            if (row == null) return;
+            for (int i = 0; i < 3 && i < filled; i++)
+            {
+                var t = row.Find("Star" + i);
+                if (t == null) continue;
+                int index = i;
+                var star = t;
+                star.localScale = Vector3.zero;
+                Tween.Scale(star, 1f, 0.38f, Ease.OutBack).SetOvershoot(2.4f).SetDelay(delay + i * 0.12f).OnComplete(() =>
+                {
+                    if (star == null) return;
+                    if (sound) AudioManager.Play(Sfx.Star, 0.7f, 1f + index * 0.12f);
+                    var sm = ScreenManager.Instance;
+                    if (sm != null && sm.FxLayer != null) FX.Sparkles(sm.FxLayer, FX.LocalCenterOf((RectTransform)star), 3);
+                });
+            }
+        }
+
+        // ---------------------------------------------------------------------------------------- worlds
+
+        /// <summary>
+        /// Localized name of an (unbounded) world number: the theme name, plus a roman numeral once the themes cycle
+        /// ("Enchanted Forest", ..., "Moonlit Village", "Enchanted Forest II"...). "World N" when the catalog is empty.
+        /// </summary>
+        public static string WorldName(int areaNumber)
+        {
+            var area = Areas.AreaForNumber(areaNumber);
+            if (area == null) return Loc.T("worlds.world_number", areaNumber + 1);
+            string name = Loc.T(area.NameKey);
+            int cycle = Areas.CycleOfArea(areaNumber);
+            if (cycle <= 0) return name;
+            return Loc.Has("worlds.cycle_name") ? Loc.T("worlds.cycle_name", name, Roman(cycle + 1)) : name + " " + Roman(cycle + 1);
+        }
+
+        /// <summary>Roman numeral (1..3999; plain digits outside that range).</summary>
+        public static string Roman(int n)
+        {
+            if (n <= 0 || n >= 4000) return n.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            int[] values = { 1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1 };
+            string[] symbols = { "M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I" };
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < values.Length; i++)
+                while (n >= values[i]) { sb.Append(symbols[i]); n -= values[i]; }
+            return sb.ToString();
         }
 
         /// <summary>Horizontal "x / y" style progress text, e.g. "350/1000".</summary>

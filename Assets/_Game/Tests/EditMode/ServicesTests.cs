@@ -347,7 +347,7 @@ namespace PotionPop.Tests
             List<LeaderboardEntry> top = LeaderboardService.BuildWeekly(5, 1.0, long.MaxValue / 2, "", "");
             Assert.IsTrue(top[0].isPlayer);
             Assert.AreEqual(1, top[0].rank);
-            Assert.AreEqual("avatar_puppy", top[0].avatar);
+            Assert.AreEqual("avatar_luna", top[0].avatar, "the default avatar is Luna");
 
             List<LeaderboardEntry> zero = LeaderboardService.BuildWeekly(5, 0.0, 0, "Me", "avatar_duck");
             // Week start: all bots at 0, the player wins the tie.
@@ -432,8 +432,38 @@ namespace PotionPop.Tests
         {
             Assert.AreEqual("avatar_fox", LeaderboardService.AvatarSprite("fox"));
             Assert.AreEqual("avatar_fox", LeaderboardService.AvatarSprite("avatar_fox"));
-            Assert.AreEqual("avatar_puppy", LeaderboardService.AvatarSprite("dragon"));
-            Assert.AreEqual("avatar_puppy", LeaderboardService.AvatarSprite(null));
+            Assert.AreEqual("avatar_dragon", LeaderboardService.AvatarSprite("dragon"), "the magic avatars are valid too");
+            Assert.AreEqual("avatar_luna", LeaderboardService.AvatarSprite("zebra"));
+            Assert.AreEqual("avatar_luna", LeaderboardService.AvatarSprite(null));
+            foreach (string id in LeaderboardSim.AvatarIds)
+            {
+                CollectionAssert.Contains(PlayerProfile.Avatars, id, "rivals only use avatars the game has");
+                Assert.AreNotEqual(PlayerProfile.DefaultAvatar, id, "rivals never look like the default player");
+            }
+        }
+
+        [Test]
+        public void Weekly_RivalsFitTheStarEconomy()
+        {
+            // Levels give 1-3 stars (only new stars count): a casual week is ~10-80 stars, the best rivals ~100-150.
+            for (int week = 2950; week < 2970; week++)
+            {
+                var end = new List<long>();
+                for (int slot = 0; slot < LeaderboardSim.BotCount; slot++) end.Add(LeaderboardSim.WeeklyBotScore(week, slot, 1.0));
+                end.Sort();
+                long top = end[end.Count - 1], second = end[end.Count - 2], median = end[end.Count / 2];
+                Assert.That(top, Is.InRange(105, 150), "week " + week + " top");
+                Assert.That(second, Is.InRange(100, 150), "week " + week + " second");
+                Assert.That(median, Is.InRange(10, 80), "week " + week + " median");
+                Assert.That(end[0], Is.GreaterThanOrEqualTo(5));
+            }
+            // A player winning ~5 levels a day with 2-3 stars (~90 stars) makes the top 5 by the end of the week.
+            List<LeaderboardEntry> list = LeaderboardService.BuildWeekly(2960, 1.0, 90, "Me", "avatar_fox");
+            Assert.LessOrEqual(list.Find(e => e.isPlayer).rank, 5);
+
+            // Offline global: all-time totals in the hundreds / thousands, not Shelf Pop's six digits.
+            List<LeaderboardEntry> global = LeaderboardService.BuildSimulatedGlobal(LeaderboardSim.GlobalEpochDay, 0, "Me", "avatar_fox");
+            foreach (LeaderboardEntry e in global) Assert.That(e.score, Is.InRange(0, 3000));
         }
 
         // ======================================================================================== ranking moderation

@@ -17,7 +17,7 @@ namespace PotionPop
         // identity
         public string playerId = "";        // 7-digit display id, generated on first launch
         public string playerName = "";      // empty = "Player" localized
-        public string avatar = "puppy";     // avatar_<name> sprite
+        public string avatar = "luna";      // avatar_<name> sprite (PlayerProfile.Avatars)
 
         // progression
         public int level = 1;               // next level to play
@@ -26,7 +26,7 @@ namespace PotionPop
         public int levelsWon;
         public int levelsLost;
         public int hardLevelsWon;
-        public int totalMatches;            // (Shelf Pop field, unused)
+        public int totalMatches;            // legacy field (unused, kept for save compatibility)
         public int maxCombo;                // longest chain of bottles completed in a row
         /// <summary>Best star rating per level: char i = stars of level i + 1 ('0' = not won yet, '1'..'3').</summary>
         public string levelStars = "";
@@ -35,7 +35,7 @@ namespace PotionPop
         public int replaysWon;
         public bool tutorialDone;
         public List<string> seenTutorials = new List<string>();   // booster tutorials etc.
-        public int lastSeenArea;            // area number shown in the "area unlocked" popup
+        public int lastSeenArea;            // world number shown in the "new world unlocked" popup
 
         // currencies
         public int coins = 300;

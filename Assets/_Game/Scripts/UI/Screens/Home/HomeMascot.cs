@@ -1,7 +1,7 @@
 // ============================================================================================================
-// Mimi on the Home screen: stands beside the shop entrance, breathes and bobs, hops or waves every few seconds,
-// and on tap does a happy jump (cheer pose, sparkles, sound, haptic) and says a random localized tip in a speech
-// bubble. Timers run on unscaled time; nothing allocates per frame.
+// Luna, the little witch kitten, on the Home screen: stands in front of the potion shop, breathes and bobs, hops or
+// waves every few seconds, and on tap does a happy jump (cheer pose, sparkles, sound, haptic) and says a random
+// localized tip in a speech bubble. Timers run on unscaled time; nothing allocates per frame.
 // ============================================================================================================
 using TMPro;
 using UnityEngine;
@@ -15,7 +15,7 @@ namespace PotionPop.UI
         public const int TipCount = 12;
         const float BubbleSeconds = 3.6f;
 
-        /// <summary>Moves (hop/jump); its parent places Mimi.</summary>
+        /// <summary>Moves (hop/jump); its parent places Luna.</summary>
         RectTransform _body;
         Image _image;
         RectTransform _bubble;
@@ -27,10 +27,10 @@ namespace PotionPop.UI
         int _lastTip = -1;
         bool _busy;
 
-        /// <summary>Builds Mimi under `parent` (a rect placed at her feet, pivot bottom-center).</summary>
+        /// <summary>Builds Luna under `parent` (a rect placed at her feet, pivot bottom-center).</summary>
         public static HomeMascot Create(RectTransform parent, Vector2 size)
         {
-            var root = UIKit.Rect("Mimi", parent);
+            var root = UIKit.Rect("Luna", parent);
             root.anchorMin = root.anchorMax = new Vector2(0.5f, 0f);
             root.pivot = new Vector2(0.5f, 0f);
             root.sizeDelta = size;
@@ -38,7 +38,7 @@ namespace PotionPop.UI
             root.gameObject.AddComponent<HitArea>();   // tap target
             var m = root.gameObject.AddComponent<HomeMascot>();
 
-            // Contact shadow on the sidewalk.
+            // Contact shadow on the ground.
             var shadow = UIKit.NewImage(root, "Shadow", UISprites.Circle, new Color(0.1f, 0.05f, 0.2f, 0.28f));
             UIKit.Place(shadow.rectTransform, new Vector2(0.5f, 0f), new Vector2(size.x * 0.7f, size.x * 0.16f), new Vector2(0f, -size.x * 0.05f));
 

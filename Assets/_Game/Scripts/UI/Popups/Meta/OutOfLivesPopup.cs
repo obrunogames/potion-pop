@@ -1,5 +1,5 @@
 // ============================================================================================================
-// Out of lives: Mimi napping (floating "Zzz"), a beating heart with the count, a live countdown to the next life,
+// Out of lives: Luna napping on her spellbook (floating "Zzz"), a beating heart with the count, a live countdown to the next life,
 // "Refill" for Lives.RefillPrice coins and "+1 life" for a rewarded ad. As soon as hearts are available (bought,
 // watched or regenerated) the hearts fly to the top bar, the popup closes and onHeartsAvailable runs.
 // ============================================================================================================
@@ -48,15 +48,15 @@ namespace PotionPop.UI
             _heartsAtOpen = Lives.Hearts;
             float w = content.rect.width;
 
-            // Mimi asleep + heart.
+            // Luna asleep + heart.
             var stage = UIKit.Rect("Stage", content);
             UIKit.Place(stage, new Vector2(0.5f, 1f), new Vector2(w, 430f), Vector2.zero);
             var glow = UIKit.NewImage(stage, "Glow", UISprites.Glow, new Color(0.72f, 0.6f, 1f, 0.55f));
             UIKit.Place(glow.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(560f, 520f), new Vector2(-60f, 0f));
-            var mimi = UIKit.Image(stage, "mascot_sleep", new Vector2(280f, 418f));
-            UIKit.Place(mimi.rectTransform, new Vector2(0.5f, 0f), new Vector2(280f, 418f), new Vector2(-150f, 0f));
-            mimi.rectTransform.pivot = new Vector2(0.5f, 0f);
-            Tween.Scale(mimi.transform, new Vector3(1.03f, 0.96f, 1f), 1.4f, Ease.InOutSine).SetLoops(-1, true);
+            var luna = UIKit.Image(stage, "mascot_sleep", new Vector2(280f, 418f));
+            UIKit.Place(luna.rectTransform, new Vector2(0.5f, 0f), new Vector2(280f, 418f), new Vector2(-150f, 0f));
+            luna.rectTransform.pivot = new Vector2(0.5f, 0f);
+            Tween.Scale(luna.transform, new Vector3(1.03f, 0.96f, 1f), 1.4f, Ease.InOutSine).SetLoops(-1, true);
 
             _zzz = UIKit.Rect("Zzz", stage);
             UIKit.Place(_zzz, new Vector2(0.5f, 0f), new Vector2(160f, 80f), new Vector2(-40f, 330f));

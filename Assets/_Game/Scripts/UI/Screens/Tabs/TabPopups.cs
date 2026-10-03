@@ -6,10 +6,11 @@ using UnityEngine.UI;
 
 namespace PotionPop.UI
 {
-    /// <summary>Enlarged collection card floating over the dim overlay (no panel), with a wiggle and sparkles.</summary>
+    /// <summary>Card detail: the enlarged collection card floating over the dim overlay (no panel) with a wiggle and
+    /// sparkles, its world and the album progress underneath.</summary>
     public class CardZoomPopup : Popup
     {
-        string _productId;
+        string _cardId;
         RectTransform _card;
 
         protected override Vector2 PanelSize => new Vector2(720f, 1240f);
@@ -19,10 +20,10 @@ namespace PotionPop.UI
 
         public override void OnBack() => Close();
 
-        public static void Open(string productId)
+        public static void Open(string cardId)
         {
-            if (string.IsNullOrEmpty(productId)) return;
-            PopupManager.Show<CardZoomPopup>(p => p._productId = productId);
+            if (string.IsNullOrEmpty(cardId)) return;
+            PopupManager.Show<CardZoomPopup>(p => p._cardId = cardId);
         }
 
         protected override void BuildContent(RectTransform content)
@@ -37,16 +38,17 @@ namespace PotionPop.UI
             var holder = UIKit.Rect("Holder", content);
             UIKit.Place(holder, new Vector2(0.5f, 1f), new Vector2(cardW, cardW * CommonUI.CardAspect), new Vector2(0f, -20f));
             var burst = UIKit.Image(holder, "sunburst", new Vector2(cardW * 1.9f, cardW * 1.9f));
-            burst.color = DS.WithAlpha(Color.Lerp(CommonUI.ProductAccent(_productId), Color.white, 0.4f), 0.8f);
+            burst.color = DS.WithAlpha(Color.Lerp(CommonUI.CardAccent(_cardId), Color.white, 0.4f), 0.8f);
             UIKit.Place(burst.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(cardW * 1.9f, cardW * 1.9f), Vector2.zero);
             Tween.Rotate(burst.transform, 360f, 18f, Ease.Linear).SetLoops(-1, false);
-            _card = CommonUI.CardFront(holder, _productId, cardW);
+            _card = CommonUI.CardFront(holder, _cardId, cardW);
             UIKit.Place(_card, new Vector2(0.5f, 0.5f), _card.sizeDelta, Vector2.zero);
 
-            var area = Catalog.GetArea(Catalog.AreaOfProduct(_productId));
+            var area = Catalog.GetArea(Catalog.AreaOfCard(_cardId));
             if (area != null)
             {
-                var areaName = UIKit.LocText(content, area.NameKey, TextStyle.H2, new Vector2(size.x, 80f));
+                var areaName = UIKit.LocText(content, "tabs.col.card_world", TextStyle.H2, new Vector2(size.x, 80f),
+                    Loc.T(area.NameKey), Collection.OwnedCount(area.id), Collection.AlbumSize(area.id));
                 UIKit.Place(areaName.rectTransform, new Vector2(0.5f, 0f), new Vector2(size.x, 80f), new Vector2(0f, 60f));
             }
             var hint = CommonUI.LocLabel(content, "ui.tap_to_continue", TextStyle.BodyLight, new Vector2(size.x, 50f), TextAlignmentOptions.Center, 34f);
@@ -78,14 +80,23 @@ namespace PotionPop.UI
         protected override void OnOverlayTap() => Close();
     }
 
-    /// <summary>Avatar picker: 8 avatars in a 4x2 grid, the current one ringed in green with a check.</summary>
+    /// <summary>Avatar picker: the 12 avatars in a 4x3 grid — Luna and her magical friends first (gold ring + a
+    /// twinkling sparkle), then the animal friends; the current one is ringed in green with a check.</summary>
     public class AvatarPickerPopup : Popup
     {
         RectTransform[] _discs;
         RectTransform[] _checks;
+        RectTransform[] _sparkles;
 
         protected override string TitleKey => "tabs.profile.choose_avatar";
-        protected override Vector2 PanelSize => new Vector2(900f, 840f);
+        protected override Vector2 PanelSize
+        {
+            get
+            {
+                int rows = (PlayerProfile.Avatars.Length + 3) / 4;
+                return new Vector2(900f, 440f + rows * 214f);
+            }
+        }
 
         public static void Open()
         {
@@ -99,22 +110,39 @@ namespace PotionPop.UI
             var ids = PlayerProfile.Avatars;
             const int cols = 4;
             int rows = (ids.Length + cols - 1) / cols;
-            float cell = Mathf.Min(190f, (size.x - (cols - 1) * DS.Space.S) / cols);
+            float doneH = DS.ButtonDimensions(ButtonSize.Medium).y;
+            float cell = Mathf.Min(190f, (size.x - (cols - 1) * DS.Space.S) / cols,
+                (size.y - doneH - DS.Space.L - (rows - 1) * DS.Space.M) / rows);
             float disc = cell * 0.9f;
-            var grid = UIKit.Grid(content, new Vector2(size.x, rows * cell + (rows - 1) * DS.Space.M), new Vector2(cell, cell),
-                new Vector2(DS.Space.S, DS.Space.M), cols);
-            UIKit.Place((RectTransform)grid.transform, new Vector2(0.5f, 1f), new Vector2(size.x, rows * cell + (rows - 1) * DS.Space.M),
-                new Vector2(0f, -DS.Space.M));
+            float gridH = rows * cell + (rows - 1) * DS.Space.M;
+            var grid = UIKit.Grid(content, new Vector2(size.x, gridH), new Vector2(cell, cell), new Vector2(DS.Space.S, DS.Space.M), cols);
+            UIKit.Place((RectTransform)grid.transform, new Vector2(0.5f, 1f), new Vector2(size.x, gridH), new Vector2(0f, -DS.Space.S));
             _discs = new RectTransform[ids.Length];
             _checks = new RectTransform[ids.Length];
+            _sparkles = new RectTransform[ids.Length];
             for (int i = 0; i < ids.Length; i++)
             {
                 string id = ids[i];
+                bool magic = PlayerProfile.IsMagicAvatar(id);
                 var c = UIKit.Rect("Avatar_" + id, grid.transform);
                 var visual = UIKit.Stretch(UIKit.Rect("Visual", c));
-                var avatar = CommonUI.Avatar(visual, "avatar_" + id, disc, DS.Colors.Lavender);
+                if (magic)
+                {
+                    var glow = UIKit.NewImage(visual, "Glow", UISprites.Glow, DS.WithAlpha(DS.Colors.StarGold, 0.45f));
+                    UIKit.Place(glow.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(disc * 1.3f, disc * 1.3f), Vector2.zero);
+                }
+                var avatar = CommonUI.Avatar(visual, "avatar_" + id, disc, magic ? DS.Colors.StarGold : DS.Colors.Lavender);
                 UIKit.Place(avatar, new Vector2(0.5f, 0.5f), new Vector2(disc, disc), Vector2.zero);
                 _discs[i] = avatar;
+                if (magic)
+                {
+                    var sparkle = UIKit.Image(visual, "fx_sparkle", new Vector2(58f, 58f));
+                    UIKit.Place(sparkle.rectTransform, new Vector2(0f, 1f), new Vector2(58f, 58f), new Vector2(4f, -2f));
+                    sparkle.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+                    sparkle.rectTransform.anchoredPosition = new Vector2(26f, -24f);
+                    Tween.Scale(sparkle.transform, 1.25f, 0.6f + i * 0.07f, Ease.InOutSine).SetLoops(-1, true);
+                    _sparkles[i] = sparkle.rectTransform;
+                }
                 var check = UIKit.Rect("Check", visual);
                 UIKit.Place(check, new Vector2(1f, 0f), new Vector2(64f, 64f), new Vector2(-2f, 2f));
                 var checkBg = UIKit.NewImage(check, "Bg", UISprites.Circle, DS.Colors.Primary);
@@ -124,7 +152,7 @@ namespace PotionPop.UI
                 _checks[i] = check;
                 int index = i;
                 CommonUI.MakeTappable(c, visual, () => Pick(index));
-                CommonUI.PopIn(visual, 0.12f + i * 0.04f);
+                CommonUI.PopIn(visual, 0.12f + i * 0.035f);
             }
             Refresh(-1);
 
@@ -141,7 +169,7 @@ namespace PotionPop.UI
             AudioManager.Play(changed ? Sfx.Pop : Sfx.Click);
             if (changed)
             {
-                FX.Sparkles(null, FX.LocalCenterOf(_discs[index]), 10);
+                FX.Sparkles(null, FX.LocalCenterOf(_discs[index]), PlayerProfile.IsMagicAvatar(ids[index]) ? 16 : 10);
                 Haptics.Play(HapticType.Selection);
             }
             Refresh(index);
@@ -154,7 +182,8 @@ namespace PotionPop.UI
             for (int i = 0; i < ids.Length; i++)
             {
                 bool on = ids[i] == current;
-                CommonUI.SetAvatarRing(_discs[i], on ? DS.Colors.Primary : DS.Colors.Lavender);
+                Color idle = PlayerProfile.IsMagicAvatar(ids[i]) ? DS.Colors.StarGold : DS.Colors.Lavender;
+                CommonUI.SetAvatarRing(_discs[i], on ? DS.Colors.Primary : idle);
                 _checks[i].gameObject.SetActive(on);
                 if (on && i == punched)
                 {

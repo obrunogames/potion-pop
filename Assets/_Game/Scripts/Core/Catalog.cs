@@ -14,8 +14,8 @@ namespace PotionPop
         public string NameKey => "area." + id;           // localized world name
         public string HomeBackground => "home_" + id;    // sprite names
         public string GameBackground => "gamebg_" + id;
-        /// <summary>Old name of <see cref="cardIds"/> (Shelf Pop products); kept while call sites migrate.</summary>
-        [System.Obsolete("use cardIds")] public string[] productIds => cardIds;
+        /// <summary>Number of cards in this world's album.</summary>
+        public int CardCount => cardIds != null ? cardIds.Length : 0;
     }
 
     /// <summary>
@@ -97,12 +97,6 @@ namespace PotionPop
 
         public static string CardNameKey(string cardId) => "card." + cardId;
         public static string CardSprite(string cardId) => "card_" + cardId;
-
-        // ---- old names (Shelf Pop products), kept while call sites migrate
-        [Obsolete("use AllCards")] public static IEnumerable<string> AllProducts => AllCards;
-        [Obsolete("use CardCount")] public static int ProductCount => CardCount;
-        [Obsolete("use AreaOfCard")] public static string AreaOfProduct(string id) => AreaOfCard(id);
-        [Obsolete("use CardNameKey")] public static string ProductNameKey(string id) => CardNameKey(id);
 
         /// <summary>Reloads Resources/catalog.json (editor tools / tests).</summary>
         public static void Reload()
@@ -224,5 +218,18 @@ namespace PotionPop
 
         /// <summary>First level of an area number.</summary>
         public static int FirstLevelOfArea(int areaNumber) => Math.Max(0, areaNumber) * LevelsPerArea + 1;
+
+        /// <summary>Last level of an area number.</summary>
+        public static int LastLevelOfArea(int areaNumber) => FirstLevelOfArea(areaNumber) + LevelsPerArea - 1;
+
+        /// <summary>Stars a whole world can give (3 per level).</summary>
+        public const int MaxStarsPerArea = LevelsPerArea * 3;
+
+        /// <summary>How many times the world themes went round before this area (0 for the first 6 worlds).</summary>
+        public static int CycleOfArea(int areaNumber)
+        {
+            int n = Catalog.Areas.Count;
+            return n > 0 ? Math.Max(0, areaNumber) / n : 0;
+        }
     }
 }

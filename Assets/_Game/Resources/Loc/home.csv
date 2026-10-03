@@ -8,41 +8,37 @@ home.side.daily,Daily,Diário,Diario
 home.side.quests,Quests,Missões,Misiones
 home.side.spin,Spin,Girar,Girar
 home.side.spin_free,Free!,Grátis!,¡Gratis!
-home.rank,#{0},#{0},#{0}
+home.side.map,Map,Mapa,Mapa
 home.streak,Streak {0},Sequência {0},Racha {0}
 home.lives_full,Your lives are full!,Suas vidas estão cheias!,¡Tus vidas están completas!
 home.lives_infinite,Unlimited lives active!,Vidas infinitas ativas!,¡Vidas infinitas activas!
-home.tip.1,Three of a kind in one cubby makes them pop!,Três iguais no mesmo nicho fazem eles estourarem!,¡Tres iguales en un mismo hueco hacen que estallen!
-home.tip.2,Peek behind the front row: the next layer is waiting there.,Espie atrás da fileira da frente: a próxima camada está esperando.,Mira detrás de la fila delantera: la siguiente capa te espera.
-home.tip.3,Match fast to build a combo and earn more stars!,Combine rápido para fazer combos e ganhar mais estrelas!,¡Combina rápido para hacer combos y ganar más estrellas!
-home.tip.4,Chains break after a few matches anywhere on the board.,As correntes quebram depois de algumas combinações em qualquer lugar.,Las cadenas se rompen tras unas cuantas combinaciones en cualquier parte.
-home.tip.5,Stuck? A Shuffle mixes up every open shelf.,Travou? O Embaralhar mistura todas as prateleiras abertas.,¿Atascado? Mezclar revuelve todos los estantes abiertos.
-home.tip.6,Win levels in a row to get free boosters!,Vença fases seguidas para ganhar reforços grátis!,¡Gana niveles seguidos para conseguir potenciadores gratis!
-home.tip.7,"Every 1,000 stars fill up the Star Chest.",A cada 1.000 estrelas o Baú de Estrelas enche.,Cada 1.000 estrellas llenan el Cofre Estelar.
-home.tip.8,Spin the lucky wheel for free once a day!,Gire a roleta da sorte de graça uma vez por dia!,¡Gira la ruleta de la suerte gratis una vez al día!
-home.tip.9,Keep some empty spaces: they are your best friends!,Deixe alguns espaços vazios: eles são seus melhores amigos!,Deja algunos espacios vacíos: ¡son tus mejores amigos!
+home.tip.1,"Tap a bottle, then tap another one to pour!",Toque numa garrafa e depois em outra para despejar!,¡Toca una botella y luego otra para verter!
+home.tip.2,Potions only pour onto the same color or into an empty bottle.,A poção só cai sobre a mesma cor ou numa garrafa vazia.,La poción solo cae sobre el mismo color o en una botella vacía.
+home.tip.3,Fill a bottle with a single color and the cork pops in!,Encha uma garrafa com uma cor só e a rolha entra!,¡Llena una botella con un solo color y entra el corcho!
+home.tip.4,Keep an empty bottle free: it's your best friend!,Guarde uma garrafa vazia: ela é sua melhor amiga!,Guarda una botella vacía: ¡es tu mejor amiga!
+home.tip.5,"Fewer moves, more stars. Can you get all 3?","Menos jogadas, mais estrelas. Consegue as 3?","Menos movimientos, más estrellas. ¿Logras las 3?"
+home.tip.6,Fill bottles one after another for a sparkly combo!,Complete garrafas uma atrás da outra para um combo brilhante!,¡Completa botellas una tras otra para un combo brillante!
+home.tip.7,"Stuck? Undo, Shuffle or an Extra Bottle can save the day.","Travou? Desfazer, Embaralhar ou uma Garrafa Extra salvam o dia.","¿Atascado? Deshacer, Mezclar o una Botella Extra te salvan."
+home.tip.8,Win levels in a row to get free boosters!,Vença fases seguidas para ganhar reforços grátis!,¡Gana niveles seguidos para conseguir potenciadores gratis!
+home.tip.9,Every 30 stars fill up the Star Chest.,A cada 30 estrelas o Baú de Estrelas enche.,Cada 30 estrellas se llena el Cofre Estelar.
 home.tip.10,Every win gives you a new card for your album.,Cada vitória dá uma carta nova para o seu álbum.,Cada victoria te da una carta nueva para tu álbum.
 home.tip.11,Hard levels give double coins. You can do it!,Fases difíceis dão moedas em dobro. Você consegue!,Los niveles difíciles dan monedas dobles. ¡Tú puedes!
-home.tip.12,Welcome to my shop! Ready to sort some goodies?,Bem-vindo à minha loja! Pronto para arrumar umas gostosuras?,¡Bienvenido a mi tienda! ¿Listo para ordenar unas delicias?
+home.tip.12,Replay levels on the map to grab the stars you missed!,Jogue fases de novo no mapa para pegar as estrelas que faltaram!,¡Repite niveles en el mapa para ganar las estrellas que te faltan!
 home.daily_title,Daily Reward,Prêmio Diário,Premio Diario
 home.spin_title,Lucky Spin,Roleta da Sorte,Ruleta de la Suerte
 home.chest_title,Star Chest,Baú de Estrelas,Cofre Estelar
 home.quests_title,Daily Quests,Missões Diárias,Misiones Diarias
-home.area_title,New Area!,Nova Área!,¡Nueva Área!
+home.area_title,New World!,Novo Mundo!,¡Nuevo Mundo!
+home.area_desc,Levels {0}–{1}: a brand-new potion shop and 9 magical cards to collect!,Fases {0}–{1}: uma loja de poções novinha e 9 cartas mágicas para colecionar!,Niveles {0}–{1}: ¡una tienda de pociones nueva y 9 cartas mágicas para coleccionar!
 home.lives_title,Out of Lives,Sem Vidas,Sin Vidas
-home.goal,Clear every shelf in {0}!,Limpe todas as prateleiras em {0}!,¡Vacía todos los estantes en {0}!
 home.pick_boosters,Pick your boosters,Escolha seus reforços,Elige tus potenciadores
-home.hard_badge,HARD,DIFÍCIL,DIFÍCIL
-home.hard_desc,Hard level: double coins!,Fase difícil: moedas em dobro!,Nivel difícil: ¡monedas dobles!
-home.plus_seconds,+{0}s,+{0}s,+{0}s
+home.hard_desc,Double coins if you win!,Moedas em dobro se você vencer!,¡Monedas dobles si ganas!
 home.next_life,Next life in {0},Próxima vida em {0},Próxima vida en {0}
-home.no_lives_desc,Mimi is taking a nap. Wait for a new life or refill now!,A Mimi está tirando uma soneca. Espere uma nova vida ou recarregue agora!,Mimi está tomando una siesta. ¡Espera una vida nueva o recarga ahora!
+home.no_lives_desc,Luna is taking a nap. Wait for a new life or refill now!,A Luna está tirando uma soneca. Espere uma nova vida ou recarregue agora!,Luna está tomando una siesta. ¡Espera una vida nueva o recarga ahora!
 home.refill,Refill,Recarregar,Recargar
 home.one_life,+1 life,+1 vida,+1 vida
 home.zzz,Zzz,Zzz,Zzz
-home.lives_back,Lives are back. Let's play!,As vidas voltaram. Vamos jogar!,Volvieron las vidas. ¡A jugar!
 home.lets_go,Let's go!,Vamos lá!,¡Vamos!
-home.area_desc,New products and a brand-new shop are waiting for you!,Novos produtos e uma loja novinha esperam por você!,¡Nuevos productos y una tienda nueva te esperan!
 home.daily_desc,Come back every day for bigger rewards!,Volte todo dia para ganhar prêmios maiores!,¡Vuelve cada día para ganar premios más grandes!
 home.daily_next,Next reward in {0},Próximo prêmio em {0},Próximo premio en {0}
 home.spin_free_btn,Free spin!,Giro grátis!,¡Giro gratis!
@@ -54,5 +50,4 @@ home.you_won,You won!,Você ganhou!,¡Ganaste!
 home.chest_desc,Collect {0} stars to open the chest!,Junte {0} estrelas para abrir o baú!,¡Reúne {0} estrellas para abrir el cofre!
 home.chest_ready,The chest is ready to open!,O baú está pronto para abrir!,¡El cofre está listo para abrirse!
 home.chest_inside,Inside:,Dentro:,Contiene:
-home.chest_boosters,{0} boosters,{0} reforços,{0} potenciadores
 home.quests_done,All quests done! Great job!,Todas as missões feitas! Muito bem!,¡Todas las misiones hechas! ¡Buen trabajo!

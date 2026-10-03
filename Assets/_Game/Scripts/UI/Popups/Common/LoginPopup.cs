@@ -39,7 +39,7 @@ namespace PotionPop.UI
             Vector2 size = content.rect.size;
             float y = 0f;
 
-            // Mimi pointing at the benefits, with a soft glow behind her.
+            // Luna pointing at the benefits, with a soft glow behind her.
             const float mascotH = 330f;
             var stage = UIKit.Rect("Stage", content);
             UIKit.Place(stage, new Vector2(0.5f, 1f), new Vector2(size.x, mascotH), new Vector2(0f, -y));

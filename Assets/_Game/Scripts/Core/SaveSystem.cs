@@ -397,7 +397,7 @@ namespace PotionPop
             if (ensureId && !IsValidPlayerId(d.playerId)) { d.playerId = GeneratePlayerId(); changed = true; }
             if (d.playerId == null) d.playerId = "";
             if (d.playerName == null) d.playerName = "";
-            if (string.IsNullOrEmpty(d.avatar)) d.avatar = "puppy";
+            if (string.IsNullOrEmpty(d.avatar)) d.avatar = PlayerProfile.DefaultAvatar;
             if (d.language == null) d.language = "";
             if (d.cloudUid == null) d.cloudUid = "";
             if (d.seenTutorials == null) d.seenTutorials = new System.Collections.Generic.List<string>();

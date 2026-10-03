@@ -53,10 +53,21 @@ namespace PotionPop.UI
                 ("Secondary", DS.Colors.Secondary), ("Accent", DS.Colors.Accent), ("Orange", DS.Colors.Orange),
                 ("Pink", DS.Colors.Pink), ("Danger", DS.Colors.Danger), ("Mint", DS.Colors.Mint),
                 ("Sky", DS.Colors.Sky), ("Lavender", DS.Colors.Lavender), ("Overlay", DS.Colors.Overlay),
-                ("Frost", DS.Colors.Frost), ("Gray", DS.Colors.Gray), ("grocery", DS.Colors.AreaGrocery),
-                ("sweets", DS.Colors.AreaSweets), ("toys", DS.Colors.AreaToys), ("beauty", DS.Colors.AreaBeauty),
-                ("fresh", DS.Colors.AreaFresh),
+                ("Frost", DS.Colors.Frost), ("Gray", DS.Colors.Gray), ("StarGold", DS.Colors.StarGold),
+                ("forest", DS.AreaAccent("forest")), ("crystal", DS.AreaAccent("crystal")), ("candy", DS.AreaAccent("candy")),
+                ("sky", DS.AreaAccent("sky")), ("lagoon", DS.AreaAccent("lagoon")), ("moon", DS.AreaAccent("moon")),
             };
+            Swatches(tokens);
+
+            // Potion palette (PotionPop.Liquids): the 12 liquid colors + the hidden "?" color.
+            var liquids = new (string name, Color color)[Liquids.Count + 1];
+            for (int i = 0; i < Liquids.Count; i++) liquids[i] = (Liquids.Id(i), Liquids.Color(i));
+            liquids[Liquids.Count] = ("mystery", Liquids.Mystery);
+            Swatches(liquids);
+        }
+
+        void Swatches((string name, Color color)[] tokens)
+        {
             const int cols = 4;
             const float cellH = 150f, gap = 12f;
             float cellW = (_w - gap * (cols - 1)) / cols;

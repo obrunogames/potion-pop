@@ -6,6 +6,8 @@ namespace PotionPop.Services
     /// <summary>
     /// Deterministic simulated players for the weekly contest and the offline global ranking. Pure functions of
     /// (week id, week fraction) / (day index) so every device shows the same rivals and the tests can pin them down.
+    /// Scaled to Potion Pop's star economy: a level gives 1–3 stars (only new stars count), so a casual player earns
+    /// ~10–80 stars a week and the top rivals of a week reach ~100–150.
     /// </summary>
     public static class LeaderboardSim
     {
@@ -15,27 +17,29 @@ namespace PotionPop.Services
         /// <summary>Day index (days since 1970-01-01) the simulated global ranking starts growing from (2026-10-01).</summary>
         public const int GlobalEpochDay = 20727;
 
-        public static readonly string[] AvatarIds = { "puppy", "kitten", "bunny", "duck", "panda", "fox", "bear", "frog" };
+        /// <summary>Avatars of the simulated rivals (every avatar but Luna, the mascot and the players' default).</summary>
+        public static readonly string[] AvatarIds =
+            { "puppy", "kitten", "bunny", "duck", "panda", "fox", "bear", "frog", "owl", "dragon", "unicorn" };
 
         /// <summary>(display name, country code) — proper names/gamer tags are not translated; the country is ("lb.country.xx").</summary>
         static readonly string[,] Names =
         {
             { "Ana Clara", "br" }, { "Pedro Henrique", "br" }, { "Juju Doces", "br" }, { "Rafa Gamer", "br" },
-            { "Bia Mercado", "br" }, { "Caio Matos", "br" }, { "Lari Sorvete", "br" }, { "Docinho", "br" },
+            { "Bia Magia", "br" }, { "Caio Matos", "br" }, { "Lari Sorvete", "br" }, { "Docinho", "br" },
             { "Brigadeiro", "br" }, { "PopStar99", "br" }, { "Sofía R.", "mx" }, { "Diego Torres", "mx" },
             { "ComboKing", "mx" }, { "Pastelito", "mx" }, { "Valentina", "ar" }, { "Mateo López", "ar" },
             { "Camila Ríos", "co" }, { "Santi Gómez", "co" }, { "Lucía Martín", "es" }, { "Hugo Pardo", "es" },
             { "LunaLuz", "es" }, { "Gominola", "es" }, { "Inês Costa", "pt" }, { "Tiago Silva", "pt" },
-            { "Martina Rossi", "it" }, { "Luca Bianchi", "it" }, { "TripleTina", "it" }, { "Emma Dubois", "fr" },
+            { "Martina Rossi", "it" }, { "Luca Bianchi", "it" }, { "PotionTina", "it" }, { "Emma Dubois", "fr" },
             { "Léo Martin", "fr" }, { "Macaron", "fr" }, { "Mia Schneider", "de" }, { "Jonas Weber", "de" },
             { "SuperSorter", "de" }, { "Olivia Smith", "us" }, { "Jake Miller", "us" }, { "CandyQueen", "us" },
-            { "Chloe Brown", "gb" }, { "Harry Evans", "gb" }, { "ShelfMaster", "gb" }, { "Yuki Tanaka", "jp" },
+            { "Chloe Brown", "gb" }, { "Harry Evans", "gb" }, { "PotionMaster", "gb" }, { "Yuki Tanaka", "jp" },
             { "Haruto S.", "jp" }, { "MochiMochi", "jp" }, { "Mei Chen", "cn" }, { "Minjun Kim", "kr" },
             { "Seoyeon Park", "kr" }, { "Priya Sharma", "in" }, { "Arjun Patel", "in" }, { "Ayse Kaya", "tr" },
             { "Noah Jansen", "nl" }, { "Sanne de Vries", "nl" }, { "Liam Tremblay", "ca" }, { "DonutDuke", "ca" },
             { "Zoe Wilson", "au" }, { "Kai Nguyen", "au" }, { "BerryBlast", "au" }, { "Andrea Cruz", "ph" },
             { "KittyKat", "ph" }, { "Putri Ayu", "id" }, { "Rizky Pratama", "id" }, { "Fernanda Soto", "cl" },
-            { "Joaquín Vera", "cl" }, { "Paola Quispe", "pe" }, { "Mimi Lover", "us" }, { "Gummy Bea", "gb" },
+            { "Joaquín Vera", "cl" }, { "Paola Quispe", "pe" }, { "Luna Lover", "us" }, { "Gummy Bea", "gb" },
         };
 
         public static int NamePoolSize => Names.GetLength(0);
@@ -77,8 +81,9 @@ namespace PotionPop.Services
         public static long WeeklyBotScore(int weekId, int slot, double weekFraction)
         {
             var rng = new Rng(Hash(weekId, 0xB0750000UL + (ulong)slot));
-            double target = 150.0 + 3300.0 * Math.Pow(rng.NextDouble(), 1.7);   // most bots are casual
-            if (slot < 2) target += 1500.0 + 2000.0 * rng.NextDouble();         // two "whales" per week
+            double target = 5.0 + 85.0 * Math.Pow(rng.NextDouble(), 1.5);      // most rivals are casual: 5..90 stars
+            double whale = rng.NextDouble();
+            if (slot < 2) target = 105.0 + 45.0 * whale;                         // two "whales" per week: 105..150
             double curve = 0.6 + 0.8 * rng.NextDouble();                         // <1 front-loaded, >1 late sprint
             double start = rng.NextDouble() < 0.3 ? 0.35 * rng.NextDouble() : 0.0;
             double f = Math.Floor(Clamp01(weekFraction) * StepsPerWeek) / StepsPerWeek;
@@ -98,8 +103,9 @@ namespace PotionPop.Services
             {
                 int n = order[slot];
                 var rng = new Rng(Hash(0x6106, 0xC0DE0000UL + (ulong)slot));
-                double baseStars = 800.0 + 120000.0 * Math.Pow(rng.NextDouble(), 2.4);
-                double perDay = 20.0 + 680.0 * rng.NextDouble();
+                // All-time stars (≤ 3 per level): from newcomers (~40) to veterans (~2,600 at launch), +2..40 a day.
+                double baseStars = 40.0 + 2600.0 * Math.Pow(rng.NextDouble(), 2.4);
+                double perDay = 2.0 + 38.0 * Math.Pow(rng.NextDouble(), 1.3);
                 bots.Add(new Bot
                 {
                     name = Names[n, 0],

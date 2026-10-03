@@ -3,6 +3,9 @@ using UnityEngine;
 
 namespace PotionPop
 {
+    /// <summary>Where the player stands in a world (Worlds screen).</summary>
+    public enum WorldState { Locked, Current, Completed }
+
     public sealed class LevelResult
     {
         public int level;
@@ -193,7 +196,6 @@ namespace PotionPop
             if (maxCombo > d.maxCombo) d.maxCombo = maxCombo;
             d.continuesThisLevel = 0;
             d.levelInProgress = 0;
-            d.levelsWon++;
 
             if (replay)
             {
@@ -204,6 +206,7 @@ namespace PotionPop
             }
             else
             {
+                d.levelsWon++;   // first wins only (replays are counted in replaysWon)
                 if (level + 1 > d.level) d.level = level + 1;
                 d.winStreak++;
                 if (d.winStreak > d.bestStreak) d.bestStreak = d.winStreak;
@@ -237,12 +240,15 @@ namespace PotionPop
             return result;
         }
 
-        /// <summary>Level lost or abandoned: consumes a heart, resets streak; saves.</summary>
+        /// <summary>
+        /// Level lost or abandoned: consumes a heart and resets the win streak (a replay of an already-won level keeps
+        /// the streak, GDD §4: replays never change it); saves.
+        /// </summary>
         public static void ReportFail(int level)
         {
             var d = SaveSystem.Data;
             Lives.TryConsume();
-            d.winStreak = 0;
+            if (level >= d.level) d.winStreak = 0;
             d.levelsLost++;
             d.continuesThisLevel = 0;
             d.levelInProgress = 0;
@@ -273,6 +279,53 @@ namespace PotionPop
             SaveSystem.Data.continuesThisLevel++;
             SaveSystem.MarkDirty();
             return true;
+        }
+
+        // ------------------------------------------------------------------ worlds (Worlds screen)
+
+        /// <summary>Stars earned in a world (sum of the best stars of its 20 levels, max <see cref="Areas.MaxStarsPerArea"/>).</summary>
+        public static int StarsInArea(int areaNumber) =>
+            StarsInRange(Areas.FirstLevelOfArea(areaNumber), Areas.LastLevelOfArea(areaNumber));
+
+        /// <summary>Levels of a world won at least once (0..20).</summary>
+        public static int LevelsWonInArea(int areaNumber)
+        {
+            int first = Areas.FirstLevelOfArea(areaNumber), last = Areas.LastLevelOfArea(areaNumber), n = 0;
+            for (int l = first; l <= last; l++)
+                if (IsLevelWon(l)) n++;
+            return n;
+        }
+
+        /// <summary>Levels of a world won with 3 stars (0..20).</summary>
+        public static int PerfectLevelsInArea(int areaNumber)
+        {
+            int first = Areas.FirstLevelOfArea(areaNumber), last = Areas.LastLevelOfArea(areaNumber), n = 0;
+            for (int l = first; l <= last; l++)
+                if (BestStars(l) >= 3) n++;
+            return n;
+        }
+
+        /// <summary>Locked (not reached yet), Current (the next level to play is in it) or Completed.</summary>
+        public static WorldState StateOfArea(int areaNumber)
+        {
+            int level = CurrentLevel;
+            if (level > Areas.LastLevelOfArea(areaNumber)) return WorldState.Completed;
+            if (level >= Areas.FirstLevelOfArea(areaNumber)) return WorldState.Current;
+            return WorldState.Locked;
+        }
+
+        /// <summary>Levels won with 3 stars over the whole game (Profile).</summary>
+        public static int PerfectLevels
+        {
+            get
+            {
+                var s = SaveSystem.Data.levelStars;
+                if (string.IsNullOrEmpty(s)) return 0;
+                int n = 0;
+                for (int i = 0; i < s.Length; i++)
+                    if (s[i] == '3') n++;
+                return n;
+            }
         }
 
         // ------------------------------------------------------------------ areas

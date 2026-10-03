@@ -7,15 +7,17 @@ using UnityEngine.UI;
 namespace PotionPop.UI
 {
     /// <summary>
-    /// Shop tab (GDD §5/§8): Free (daily gift, coins for rewarded ads), Boosters (one pack card per booster) and
-    /// Bundles (1 of each in-game booster, hearts refill). Purchases fly items/coins with Sfx.Purchase.
+    /// Shop tab (GDD §6): Free magic (daily gift, coins for rewarded ads), Boosters (one pack card per booster, in
+    /// unlock order: Undo, Shuffle, Extra Bottle, Rainbow Potion, Magic Wand, Crystal Ball) and Bundles (the Magic
+    /// Bundle with 1 of each in-game booster, hearts refill). No IAP in v1: everything is paid with coins or ads.
+    /// Purchases fly items/coins with Sfx.Purchase.
     /// </summary>
     public class ShopScreen : TabScreen
     {
         public override ScreenId Id => ScreenId.Shop;
 
-        /// <summary>Booster bundle: one of each in-game booster. Priced under its contents at pack prices (Hammer 100 +
-        /// Wand ~117 + Freeze ~67 + Shuffle ~67 ≈ 350 per unit, Economy.BoosterPack) so the "Best value!" sticker is true.</summary>
+        /// <summary>Magic Bundle: one of each in-game booster. Priced under its contents at pack prices (Undo ~67 +
+        /// Shuffle ~83 + Extra Bottle ~117 + Magic Wand ~133 ≈ 400 per set, Economy.BoosterPack) so "Best value!" is true.</summary>
         public const int BundlePrice = 300;
 
         const float FreeCardH = 520f, BoosterCardH = 560f, BundleH = 300f, RefillH = 270f;
@@ -88,7 +90,7 @@ namespace PotionPop.UI
 
             _reveal.Add(CommonUI.SectionHeader(_list, "tabs.shop.section_free", "icon_gift", _w, DS.Colors.Pink));
             BuildFreeRow();
-            _reveal.Add(CommonUI.SectionHeader(_list, "tabs.shop.section_boosters", "booster_undo", _w, DS.Colors.Secondary));
+            _reveal.Add(CommonUI.SectionHeader(_list, "tabs.shop.section_boosters", "booster_wand", _w, DS.Colors.Secondary));
             BuildBoosterGrid();
             _reveal.Add(CommonUI.SectionHeader(_list, "tabs.shop.section_bundles", "booster_pack", _w, DS.Colors.Brand));
             BuildBundle();
@@ -181,9 +183,17 @@ namespace PotionPop.UI
             _reveal.Add(ad);
         }
 
+        /// <summary>Boosters in the order the player unlocks them.</summary>
+        static BoosterType[] ShopOrder()
+        {
+            var types = (BoosterType[])Economy.AllBoosters.Clone();
+            System.Array.Sort(types, (a, b) => Economy.BoosterUnlockLevel(a).CompareTo(Economy.BoosterUnlockLevel(b)));
+            return types;
+        }
+
         void BuildBoosterGrid()
         {
-            var types = Economy.AllBoosters;
+            var types = ShopOrder();
             int rows = (types.Length + 1) / 2;
             float cw = (_w - DS.Space.M) * 0.5f;
             var grid = UIKit.Grid(_list, new Vector2(_w, rows * BoosterCardH + (rows - 1) * DS.Space.M),
@@ -528,7 +538,7 @@ namespace PotionPop.UI
 
         void BuyBundle()
         {
-            // Like BuyBooster: never sell boosters the player can't use yet (Freeze / Shuffle unlock at levels 7 / 9).
+            // Like BuyBooster: never sell boosters the player can't use yet (the Magic Wand unlocks at level 12).
             int lockLvl = BundleLockLevel();
             if (lockLvl > 0)
             {

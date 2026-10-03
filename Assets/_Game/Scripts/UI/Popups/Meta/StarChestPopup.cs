@@ -1,5 +1,5 @@
 // ============================================================================================================
-// Star Chest: the chest bobbing on a sunburst, progress x/1000 stars, what's inside (coins + boosters). When it
+// Star Chest: the chest bobbing on a sunburst, progress x/30 stars, what's inside (coins + boosters). When it
 // can open: "Open" → the chest shakes harder and harder, bursts open (chest_open, ring, stars, sparkles) and the
 // rewards are revealed with the RewardPopup. Otherwise "Play" jumps to the Level Start popup to earn stars.
 // ============================================================================================================

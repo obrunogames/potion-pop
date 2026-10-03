@@ -1,6 +1,7 @@
 // ============================================================================================================
-// Base of the four tab screens (Shop, Ranking, Collection, Profile): themed full-bleed backdrop (blurred store of the
-// current area + tab tint + top/bottom shades + drifting sparkles), a big title ribbon under the top bar and a Body
+// Base of the tab screens (Shop, Ranking, Collection, Profile, Worlds): themed full-bleed backdrop (the blurred potion
+// workshop of the current world + tab tint + top/bottom shades + drifting sparkles), a big title ribbon under the top
+// bar and a Body
 // rect that spans the space between the ribbon and the bottom nav. Refresh plumbing: RequestRefresh() refreshes now
 // when visible, otherwise on the next OnShow; SaveSystem.OnReplaced and safe-area changes are wired here.
 // ============================================================================================================
@@ -61,7 +62,7 @@ namespace PotionPop.UI
             _backdrop = UIKit.Backdrop(Root, _backdropSprite);
             if (_backdrop != null) _backdropFit = _backdrop.GetComponent<AspectRatioFitter>();
 
-            // Tab tint over the blurred store (keeps each tab recognizable and text readable).
+            // Tab tint over the blurred workshop (keeps each tab recognizable and text readable).
             var tintImg = UIKit.Backdrop(Root, "ui_pixel", DS.WithAlpha(tint, 0.38f));
             tintImg.transform.parent.SetSiblingIndex(1);
 
@@ -114,10 +115,10 @@ namespace PotionPop.UI
         static string CurrentBackdrop()
         {
             var area = Areas.AreaForLevel(Progress.CurrentLevel);
-            return area != null ? area.GameBackground : "gamebg_grocery";
+            return area != null ? area.GameBackground : "gamebg_forest";
         }
 
-        /// <summary>Follows the current area (the store changes every 20 levels).</summary>
+        /// <summary>Follows the current world (the backdrop changes every 20 levels).</summary>
         void UpdateBackdrop()
         {
             string want = CurrentBackdrop();

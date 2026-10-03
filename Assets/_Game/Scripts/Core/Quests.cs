@@ -16,7 +16,7 @@ namespace PotionPop
         public Reward reward;
         public bool IsComplete => progress >= target;
         public string TitleKey => "quest." + kind.ToString().ToLowerInvariant();   // e.g. "Win {0} levels"
-        /// <summary>Value for {0} in the title (usually the target; 2 for "win 2 in a row", 30 for "30 s left").</summary>
+        /// <summary>Value for {0} in the title (usually the target; 2 for "win 2 levels in a row").</summary>
         public int TitleArg => Quests.TitleArgOf(kind, target);
         /// <summary>Localized title, e.g. "Win 3 levels".</summary>
         public string Title => Loc.T(TitleKey, TitleArg);

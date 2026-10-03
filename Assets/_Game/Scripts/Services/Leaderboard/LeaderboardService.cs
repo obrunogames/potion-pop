@@ -9,7 +9,7 @@ namespace PotionPop.Services
         public int rank;          // 1-based; 0 = unknown (player outside the online top and the count query failed)
         public string name;
         public string avatar;     // avatar_<name>
-        public string team;       // subtitle (area name / country), may be empty
+        public string team;       // subtitle (world name / country), may be empty
         public long score;
         public bool isPlayer;
         /// <summary>Firebase uid of another real player (online global ranking): the row can be reported / blocked.
@@ -115,7 +115,7 @@ namespace PotionPop.Services
         static string CacheKey(string uid)
         {
             PlayerData data = SaveSystem.Data;
-            // The language is part of the key: rows carry localized area names / fallback names baked in at fetch time.
+            // The language is part of the key: rows carry localized world names / fallback names baked in at fetch time.
             return uid + "|" + data.totalStars + "|" + PlayerName(data) + "|" + data.avatar + "|" + Loc.Language;
         }
 
@@ -305,7 +305,7 @@ namespace PotionPop.Services
             list.Add(new LeaderboardEntry
             {
                 name = string.IsNullOrWhiteSpace(playerName) ? Loc.T("lb.you") : playerName,
-                avatar = string.IsNullOrEmpty(playerAvatar) ? "avatar_puppy" : playerAvatar,
+                avatar = string.IsNullOrEmpty(playerAvatar) ? AvatarSprite(null) : playerAvatar,
                 team = playerTeam ?? "",
                 score = Math.Max(0, playerScore),
                 isPlayer = true,
@@ -341,17 +341,9 @@ namespace PotionPop.Services
             return copy;
         }
 
-        /// <summary>"avatar_puppy" for "puppy" (unknown ids fall back to the puppy).</summary>
-        public static string AvatarSprite(string avatarId)
-        {
-            if (!string.IsNullOrEmpty(avatarId))
-            {
-                string id = avatarId.StartsWith("avatar_", StringComparison.Ordinal) ? avatarId.Substring(7) : avatarId;
-                foreach (string known in LeaderboardSim.AvatarIds)
-                    if (known == id) return "avatar_" + id;
-            }
-            return "avatar_puppy";
-        }
+        /// <summary>"avatar_puppy" for "puppy" or "avatar_puppy" (any of PlayerProfile.Avatars); unknown ids fall back to
+        /// the default avatar (Luna).</summary>
+        public static string AvatarSprite(string avatarId) => "avatar_" + PlayerProfile.NormalizeAvatar(avatarId);
 
         static string PlayerName(PlayerData data)
         {

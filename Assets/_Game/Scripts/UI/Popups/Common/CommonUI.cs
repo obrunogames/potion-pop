@@ -1,7 +1,7 @@
 // ============================================================================================================
-// Shared building blocks of the tab screens and the common popups (owner: Tabs agent): section headers, cards,
-// avatar discs, collection card faces, a loading spinner and small motion helpers. Everything is code-built from the
-// design system (DS/UIKit) and null-safe for missing art.
+// Shared building blocks of the tab screens and the common popups: section headers, cards, avatar discs, collection
+// card faces (card_frame + card_<id> art + localized card.<id> name), a loading spinner and small motion helpers.
+// Everything is code-built from the design system (DS/UIKit) and null-safe for missing art.
 // ============================================================================================================
 using System;
 using TMPro;
@@ -16,7 +16,7 @@ namespace PotionPop.UI
         public const float CardAspect = 596f / 384f;
         /// <summary>Google's label gray (#1F1F1F) for the "Sign in with Google" button.</summary>
         public static readonly Color GoogleText = DS.Hex("1F1F1F");
-        /// <summary>Deep plum used for product silhouettes on missing cards.</summary>
+        /// <summary>Deep plum used for item silhouettes on missing cards.</summary>
         public static readonly Color Silhouette = DS.Hex("2A1650");
 
         static readonly Rect DefaultCardInner = new Rect(0.0807f, 0.0587f, 0.8359f, 0.8087f);
@@ -157,18 +157,14 @@ namespace PotionPop.UI
 
         // ---------------------------------------------------------------------------------------- collection cards
 
-        /// <summary>Accent color of the area a product belongs to (brand purple when unknown).</summary>
-        public static Color ProductAccent(string productId)
-        {
-            string area = Catalog.AreaOfProduct(productId);
-            return DS.AreaAccent(area);
-        }
+        /// <summary>Accent color of the world a card belongs to (brand purple when unknown).</summary>
+        public static Color CardAccent(string cardId) => DS.AreaAccent(Catalog.AreaOfCard(cardId));
 
         /// <summary>
-        /// Owned card face: gold card_frame, area-tinted window, glow, product image and localized product name.
-        /// Root size = (width, width * CardAspect).
+        /// Owned card face: gold card_frame, world-tinted window, glow, the card item art (card_&lt;id&gt;) and its localized
+        /// name (card.&lt;id&gt;). Root size = (width, width * CardAspect).
         /// </summary>
-        public static RectTransform CardFront(Transform parent, string productId, float width)
+        public static RectTransform CardFront(Transform parent, string cardId, float width, bool showName = true)
         {
             float h = width * CardAspect;
             var root = UIKit.Rect("CardFront", parent);
@@ -188,7 +184,7 @@ namespace PotionPop.UI
             window.offsetMin = new Vector2(width * 0.012f, width * 0.012f);
             window.offsetMax = new Vector2(-width * 0.012f, -width * 0.012f);
 
-            Color accent = ProductAccent(productId);
+            Color accent = CardAccent(cardId);
             float ww = width * inner.width, wh = h * inner.height;
             var tint = UIKit.RoundedRect(window, Vector2.zero, Color.Lerp(accent, Color.white, 0.62f), width * 0.07f);
             UIKit.Stretch(tint.rectTransform);
@@ -198,15 +194,22 @@ namespace PotionPop.UI
             var glow = UIKit.NewImage(window, "Glow", UISprites.Glow, DS.WithAlpha(Color.Lerp(accent, Color.white, 0.3f), 0.85f));
             UIKit.Place(glow.rectTransform, new Vector2(0.5f, 0.6f), new Vector2(ww * 1.05f, ww * 1.05f), Vector2.zero);
 
-            float ps = Mathf.Min(ww * 0.8f, wh * 0.62f);
-            var product = UIKit.Image(window, "p_" + productId, new Vector2(ps, ps));
-            product.name = "Product";
-            UIKit.Place(product.rectTransform, new Vector2(0.5f, 0.6f), new Vector2(ps, ps), Vector2.zero);
+            float ps = Mathf.Min(ww * 0.86f, wh * 0.66f);
+            var item = UIKit.Image(window, Catalog.CardSprite(cardId), new Vector2(ps, ps));
+            item.name = "Item";
+            UIKit.Place(item.rectTransform, new Vector2(0.5f, 0.6f), new Vector2(ps, ps), Vector2.zero);
+
+            if (!showName)
+            {
+                // Mini card (album strips): the item fills the window, no name band.
+                UIKit.Place(item.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(Mathf.Min(ww, wh) * 0.92f, Mathf.Min(ww, wh) * 0.92f), Vector2.zero);
+                return root;
+            }
 
             float bandH = wh * 0.2f;
             var band = UIKit.Capsule(window, new Vector2(ww * 0.92f, bandH), DS.WithAlpha(Color.white, 0.92f));
             UIKit.Place(band.rectTransform, new Vector2(0.5f, 0f), new Vector2(ww * 0.92f, bandH), new Vector2(0f, wh * 0.04f));
-            var name = UIKit.LocText(band.rectTransform, Catalog.ProductNameKey(productId), TextStyle.Body, new Vector2(ww * 0.84f, bandH * 0.9f));
+            var name = UIKit.LocText(band.rectTransform, Catalog.CardNameKey(cardId), TextStyle.Body, new Vector2(ww * 0.84f, bandH * 0.9f));
             if (name != null)
             {
                 DS.Apply(name, TextStyle.Body, Mathf.Max(14f, bandH * 0.5f));
@@ -219,10 +222,10 @@ namespace PotionPop.UI
         }
 
         /// <summary>
-        /// Card back (card_back art). With dimmed + silhouetteProductId it becomes the "missing card" look: darker back,
-        /// deep plum product silhouette and a "?" disc.
+        /// Card back (card_back art). With dimmed + silhouetteCardId it becomes the "missing card" look: darker back,
+        /// deep plum silhouette of the card item and a "?" disc.
         /// </summary>
-        public static RectTransform CardBack(Transform parent, float width, bool dimmed = false, string silhouetteProductId = null)
+        public static RectTransform CardBack(Transform parent, float width, bool dimmed = false, string silhouetteCardId = null)
         {
             float h = width * CardAspect;
             var root = UIKit.Rect("CardBack", parent);
@@ -235,12 +238,12 @@ namespace PotionPop.UI
             UIKit.Stretch(back.rectTransform);
             if (dimmed) back.color = new Color(0.62f, 0.58f, 0.72f, 1f);
 
-            if (!string.IsNullOrEmpty(silhouetteProductId))
+            if (!string.IsNullOrEmpty(silhouetteCardId))
             {
                 var veil = UIKit.RoundedRect(root, new Vector2(width * 0.8f, h * 0.78f), DS.WithAlpha(DS.Colors.Ink, 0.35f), width * 0.08f);
                 UIKit.Place(veil.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(width * 0.8f, h * 0.78f), Vector2.zero);
                 float ps = width * 0.62f;
-                var sil = UIKit.Image(root, "p_" + silhouetteProductId, new Vector2(ps, ps));
+                var sil = UIKit.Image(root, Catalog.CardSprite(silhouetteCardId), new Vector2(ps, ps));
                 sil.name = "Silhouette";
                 sil.color = DS.WithAlpha(Silhouette, 0.92f);
                 UIKit.Place(sil.rectTransform, new Vector2(0.5f, 0.56f), new Vector2(ps, ps), Vector2.zero);
@@ -251,6 +254,15 @@ namespace PotionPop.UI
                 if (q != null) UIKit.Stretch(q.rectTransform, 0f, 0f, 0f, qs * 0.04f);
             }
             return root;
+        }
+
+        /// <summary>Small card for album strips: the owned face without its name, or the dimmed back with the item's
+        /// silhouette when missing. Root size = (width, width * CardAspect).</summary>
+        public static RectTransform MiniCard(Transform parent, string cardId, float width, bool owned)
+        {
+            var card = owned ? CardFront(parent, cardId, width, false) : CardBack(parent, width, true, cardId);
+            if (card != null) card.name = owned ? "MiniCard" : "MiniCardMissing";
+            return card;
         }
 
         // ---------------------------------------------------------------------------------------- spinner
