@@ -1,0 +1,74 @@
+key,en,pt,es
+booster.undo,Hammer,Martelo,Martillo
+booster.undo.desc,Tap an item to smash it and 2 more of the same product.,Toque em um item para esmagá-lo junto com mais 2 do mesmo produto.,Toca un artículo para aplastarlo junto con 2 más del mismo producto.
+booster.wand,Magic Wand,Varinha Mágica,Varita Mágica
+booster.wand.desc,Finds the trio closest to completion and pops it.,Encontra o trio mais perto de ficar completo e o estoura.,Encuentra el trío más cercano a completarse y lo hace estallar.
+booster.bottle,Freeze,Congelar,Congelar
+booster.bottle.desc,Stops the timer for 15 seconds.,Congela o tempo por 15 segundos.,Congela el tiempo durante 15 segundos.
+booster.shuffle,Shuffle,Embaralhar,Mezclar
+booster.shuffle.desc,Shuffles all the items on the open shelves.,Embaralha todos os itens das prateleiras abertas.,Mezcla todos los artículos de los estantes abiertos.
+booster.crystal,+30s Time,+30s de Tempo,+30s de Tiempo
+booster.crystal.desc,Start the level with 30 extra seconds.,Comece a fase com 30 segundos extras.,Empieza el nivel con 30 segundos extra.
+booster.rainbow,Bomb,Bomba,Bomba
+booster.rainbow.desc,Clears 2 random trios when the level starts.,Remove 2 trios aleatórios no início da fase.,Elimina 2 tríos al azar al empezar el nivel.
+booster.unlock_at,Level {0},Fase {0},Nivel {0}
+booster.locked,Unlocks at level {0},Desbloqueia na fase {0},Se desbloquea en el nivel {0}
+booster.free,Free!,Grátis!,¡Gratis!
+booster.streak_bonus,Win streak bonus!,Bônus de sequência!,¡Bono de racha!
+quest.winlevels,Win {0} levels,Vença {0} fases,Gana {0} niveles
+quest.makematches,Make {0} matches,Faça {0} combinações,Haz {0} combinaciones
+quest.reachcombo,Reach a x{0} combo,Alcance um combo x{0},Logra un combo x{0}
+quest.useboosters,Use {0} boosters,Use {0} reforços,Usa {0} potenciadores
+quest.collectstars,Collect {0} stars,Colete {0} estrelas,Consigue {0} estrellas
+quest.winhard,Win a hard level,Vença uma fase difícil,Gana un nivel difícil
+quest.winstreak2,Win {0} levels in a row,Vença {0} fases seguidas,Gana {0} niveles seguidos
+quest.winwithtimeleft,Clear a level with {0}s left,Complete uma fase com {0}s sobrando,Completa un nivel con {0}s de sobra
+quest.progress,{0}/{1},{0}/{1},{0}/{1}
+quest.new_in,New quests in {0},Novas missões em {0},Nuevas misiones en {0}
+reward.amount.count,x{0},x{0},x{0}
+reward.amount.minutes,{0}m,{0}min,{0}min
+reward.amount.hours,{0}h,{0}h,{0}h
+reward.amount.hours_minutes,{0}h {1}m,{0}h {1}min,{0}h {1}min
+reward.coins,Coins,Moedas,Monedas
+reward.hearts,Lives,Vidas,Vidas
+reward.infinite_hearts,Unlimited lives,Vidas infinitas,Vidas infinitas
+reward.stars,Stars,Estrelas,Estrellas
+reward.card,Card,Carta,Carta
+reward.card_duplicate,Duplicate card! +{0} coins,Carta repetida! +{0} moedas,¡Carta repetida! +{0} monedas
+time.fmt_dh,{0}d {1}h,{0}d {1}h,{0}d {1}h
+time.fmt_hm,{0}h {1}m,{0}h {1}min,{0}h {1}min
+time.fmt_m,{0}m,{0}min,{0}min
+time.ready,Ready!,Pronto!,¡Listo!
+time.ends_in,Ends in {0},Termina em {0},Termina en {0}
+time.next_in,Next in {0},Próximo em {0},Siguiente en {0}
+time.day,Day {0},Dia {0},Día {0}
+time.today,Today,Hoje,Hoy
+time.tomorrow,Tomorrow,Amanhã,Mañana
+hearts.full,Full,Cheio,Lleno
+hearts.infinite,Unlimited,Infinitas,Infinitas
+hearts.next_in,+1 in {0},+1 em {0},+1 en {0}
+area.number,Area {0},Área {0},Área {0}
+area.progress,{0} · {1}/{2},{0} · {1}/{2},{0} · {1}/{2}
+level.number,Level {0},Fase {0},Nivel {0}
+level.hard,Hard level,Fase difícil,Nivel difícil
+level.win_streak,Win streak,Sequência de vitórias,Racha de victorias
+common.ok,OK,OK,OK
+common.cancel,Cancel,Cancelar,Cancelar
+common.yes,Yes,Sim,Sí
+common.no,No,Não,No
+common.close,Close,Fechar,Cerrar
+common.claim,Claim,Resgatar,Reclamar
+common.claimed,Claimed,Resgatado,Reclamado
+common.free,Free,Grátis,Gratis
+common.buy,Buy,Comprar,Comprar
+common.play,Play,Jogar,Jugar
+common.continue,Continue,Continuar,Continuar
+common.locked,Locked,Bloqueado,Bloqueado
+common.loading,Loading...,Carregando...,Cargando...
+common.player,Player,Jogador,Jugador
+common.not_enough_coins,Not enough coins!,Moedas insuficientes!,¡No tienes suficientes monedas!
+common.out_of_lives,No lives left!,Sem vidas!,¡Sin vidas!
+lang.en,English,English,English
+lang.pt,Português,Português,Português
+lang.es,Español,Español,Español
+reward.title,Rewards!,Recompensas!,¡Recompensas!

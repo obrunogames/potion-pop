@@ -1,0 +1,41 @@
+# Unity
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+*.csproj
+*.sln
+*.slnx
+*.suo
+*.user
+*.pidb
+*.booproj
+*.apk
+*.aab
+*.unitypackage
+.vs/
+.idea/
+.DS_Store
+
+# Editor screenshots taken by MCP tools
+/Assets/Screenshots/
+/Assets/Screenshots.meta
+
+# Art pipeline scratch output
+/ArtSource/logs/
+/ArtSource/preview/
+/ArtSource/probe/
+/ArtSource/*.log
+/ArtSource/probe_report.txt
+Screenshots/
+
+# Signing keys and store credentials (never commit)
+/Keystore/
+
+# Standalone level harness / scratch
+/Tools/harness/bin/

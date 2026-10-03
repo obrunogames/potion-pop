@@ -1,0 +1,25 @@
+{
+    "name": "PotionPop.Editor",
+    "rootNamespace": "PotionPop.EditorTools",
+    "references": [
+        "PotionPop.Runtime",
+        "Unity.TextMeshPro",
+        "Unity.TextMeshPro.Editor",
+        "UnityEngine.UI",
+        "UnityEditor.UI",
+        "Unity.InputSystem",
+        "AppleAuth.Editor"
+    ],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        { "name": "com.google.ads.mobile", "expression": "", "define": "SP_ADMOB" },
+        { "name": "com.lupidan.apple-signin-unity", "expression": "", "define": "SP_APPLE_AUTH" }
+    ],
+    "noEngineReferences": false
+}

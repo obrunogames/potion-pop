@@ -1,0 +1,49 @@
+key,en,pt,es
+game.plus_seconds,+{0}s,+{0}s,+{0}s
+game.combo_mult,x{0},x{0},x{0}
+game.combo,Combo x{0},Combo x{0},Combo x{0}
+game.praise.good,Good!,Boa!,¡Bien!
+game.praise.great,Great!,Ótimo!,¡Genial!
+game.praise.amazing,Amazing!,Incrível!,¡Increíble!
+game.praise.fantastic,Fantastic!,Fantástico!,¡Fantástico!
+game.level_complete,Level Complete!,Fase Concluída!,¡Nivel Completado!
+game.hammer_hint,Tap an item to smash it!,Toque em um item para esmagá-lo!,¡Toca un artículo para aplastarlo!
+game.nothing_to_smash,Nothing to smash right now!,Nada para esmagar agora!,¡No hay nada que aplastar ahora!
+game.nothing_to_pop,Nothing to pop right now!,Nada para estourar agora!,¡No hay nada que reventar ahora!
+game.freeze_active,Time is already frozen!,O tempo já está congelado!,¡El tiempo ya está congelado!
+game.nothing_to_shuffle,Nothing to shuffle right now!,Nada para embaralhar agora!,¡No hay nada que mezclar ahora!
+game.tutorial.drag,Drag 3 identical items into the same shelf!,Arraste 3 itens iguais para a mesma prateleira!,¡Arrastra 3 artículos iguales al mismo estante!
+game.tutorial.great,Great job! Keep matching!,Mandou bem! Continue combinando!,¡Buen trabajo! ¡Sigue combinando!
+game.tutorial.layers,"When a shelf front is empty, the items behind move forward!","Quando a frente de uma prateleira esvazia, os itens de trás vêm para a frente!","¡Cuando el frente de un estante se vacía, los artículos de atrás pasan al frente!"
+game.booster_intro.title,New Booster!,Novo Reforço!,¡Nuevo Potenciador!
+game.booster_intro.ok,Got it!,Entendi!,¡Entendido!
+game.pause.title,Paused,Pausado,Pausa
+game.pause.music,Music,Música,Música
+game.pause.sound,Sound,Som,Sonido
+game.pause.vibration,Vibration,Vibração,Vibración
+game.pause.heart_hint,Restarting or quitting costs a life.,Reiniciar ou sair custa uma vida.,Reiniciar o salir cuesta una vida.
+game.resume,Resume,Continuar,Continuar
+game.restart.title,Restart level?,Reiniciar fase?,¿Reiniciar nivel?
+game.quit.title,Quit level?,Sair da fase?,¿Salir del nivel?
+game.leave.life,You will lose a life.,Você vai perder uma vida.,Perderás una vida.
+game.leave.life_streak,You will lose a life and your win streak.,Você vai perder uma vida e sua sequência de vitórias.,Perderás una vida y tu racha de victorias.
+game.leave.streak,You will lose your win streak.,Você vai perder sua sequência de vitórias.,Perderás tu racha de victorias.
+game.leave.free,Your progress in this level will be lost.,Seu progresso nesta fase será perdido.,Perderás tu progreso en este nivel.
+game.out_of_time.title,Out of Time!,Acabou o Tempo!,¡Se Acabó el Tiempo!
+game.out_of_time.message,So close! Keep playing with {0} more seconds?,Quase lá! Continuar com mais {0} segundos?,¡Casi lo logras! ¿Seguir jugando con {0} segundos más?
+game.no_space.title,No Space!,Sem Espaço!,¡Sin Espacio!
+game.no_space.message,The shelves are full! Use a booster to make room.,As prateleiras estão cheias! Use um reforço para abrir espaço.,¡Los estantes están llenos! Usa un potenciador para hacer espacio.
+game.no_space.shuffle_no_help,Won't help,Não ajuda,No ayuda
+game.no_space.unlock_ad,Unlock a shelf,Desbloquear prateleira,Desbloquear estante
+game.use,Use,Usar,Usar
+game.failed.title,Level Failed,Fase Perdida,Nivel Fallido
+game.failed.infinite,Unlimited lives: no life lost!,Vidas infinitas: nenhuma vida perdida!,Vidas infinitas: ¡no perdiste ninguna vida!
+game.failed.streak_lost,Your win streak of {0} is gone!,Sua sequência de vitórias ({0}) acabou!,¡Perdiste tu racha de victorias ({0})!
+game.failed.minus_heart,-1,-1,-1
+game.home,Home,Início,Inicio
+game.complete.title,Well Done!,Muito Bem!,¡Muy Bien!
+game.complete.stars,Stars,Estrelas,Estrellas
+game.complete.double,x2,x2,x2
+game.complete.streak,Win streak: {0},Sequência de vitórias: {0},Racha de victorias: {0}
+game.complete.chest_ready,Chest ready! Open it at home,Baú pronto! Abra no Início,¡Cofre listo! Ábrelo en Inicio
+game.complete.chest_progress,{0}/{1},{0}/{1},{0}/{1}

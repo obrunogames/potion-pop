@@ -1,0 +1,70 @@
+key,en,pt,es
+ui.ok,OK,OK,OK
+ui.cancel,Cancel,Cancelar,Cancelar
+ui.close,Close,Fechar,Cerrar
+ui.yes,Yes,Sim,Sí
+ui.no,No,Não,No
+ui.continue,Continue,Continuar,Continuar
+ui.play,Play,Jogar,Jugar
+ui.claim,Claim,Resgatar,Reclamar
+ui.claim_x2,Claim x2,Resgatar x2,Reclamar x2
+ui.collect,Collect,Coletar,Recoger
+ui.buy,Buy,Comprar,Comprar
+ui.free,Free,Grátis,Gratis
+ui.free_in,Free in {0},Grátis em {0},Gratis en {0}
+ui.watch_ad,Watch Ad,Ver anúncio,Ver anuncio
+ui.loading,Loading...,Carregando...,Cargando...
+ui.retry,Retry,Tentar de novo,Reintentar
+ui.back,Back,Voltar,Volver
+ui.next,Next,Próximo,Siguiente
+ui.done,Done,Pronto,Listo
+ui.later,Later,Depois,Más tarde
+ui.get,Get,Obter,Obtener
+ui.open,Open,Abrir,Abrir
+ui.start,Start,Começar,Comenzar
+ui.restart,Restart,Reiniciar,Reiniciar
+ui.skip,Skip,Pular,Saltar
+ui.confirm,Confirm,Confirmar,Confirmar
+ui.quit,Quit,Sair,Salir
+ui.give_up,Give Up,Desistir,Rendirse
+ui.settings,Settings,Configurações,Configuración
+ui.help,Help,Ajuda,Ayuda
+ui.share,Share,Compartilhar,Compartir
+ui.full,Full,Cheio,Lleno
+ui.ready,Ready!,Pronto!,¡Listo!
+ui.locked,Locked,Bloqueado,Bloqueado
+ui.unlock,Unlock,Desbloquear,Desbloquear
+ui.new,NEW,NOVO,NUEVO
+ui.max,MAX,MÁX,MÁX
+ui.level,Level {0},Fase {0},Nivel {0}
+ui.reward,Reward,Recompensa,Recompensa
+ui.rewards,Rewards,Recompensas,Recompensas
+ui.tap_to_continue,Tap to continue,Toque para continuar,Toca para continuar
+ui.not_enough_coins,Not enough coins!,Moedas insuficientes!,¡No tienes suficientes monedas!
+ui.no_internet,No internet connection,Sem conexão com a internet,Sin conexión a internet
+ui.ad_not_ready,No video available right now. Try again later!,Nenhum vídeo disponível agora. Tente mais tarde!,No hay videos disponibles ahora. ¡Inténtalo más tarde!
+ui.coming_soon,Coming soon!,Em breve!,¡Próximamente!
+ui.error,"Oops, something went wrong.","Ops, algo deu errado.","Uy, algo salió mal."
+ui.ds.title,Design System,Sistema de design,Sistema de diseño
+ui.ds.colors,Colors,Cores,Colores
+ui.ds.typography,Typography,Tipografia,Tipografía
+ui.ds.buttons,Buttons,Botões,Botones
+ui.ds.variants,Icon · Price · Ad · Disabled,Ícone · Preço · Anúncio · Desativado,Ícono · Precio · Anuncio · Desactivado
+ui.ds.icon_buttons,Icon Buttons,Botões de ícone,Botones de ícono
+ui.ds.counters,Counters & Progress,Contadores e progresso,Contadores y progreso
+ui.ds.controls,Toggles & Badges,Chaves e selos,Interruptores e insignias
+ui.ds.ribbon,Ribbon,Faixa,Cinta
+ui.ds.ribbon_sample,Great Job!,Mandou bem!,¡Buen trabajo!
+ui.ds.effects,Effects,Efeitos,Efectos
+ui.ds.burst,Burst,Explosão,Explosión
+ui.ds.sparkles,Sparkles,Brilhos,Destellos
+ui.ds.confetti,Confetti,Confete,Confeti
+ui.ds.ring,Ring,Anel,Anillo
+ui.ds.float,Float,Flutuar,Flotar
+ui.ds.float_sample,Amazing!,Incrível!,¡Increíble!
+ui.ds.shake,Shake,Tremer,Sacudir
+ui.ds.toast,Toast,Aviso,Aviso
+ui.ds.toast_sample,Hello from Potion Pop!,Olá do Potion Pop!,¡Hola desde Potion Pop!
+ui.ds.fly,Fly,Voar,Volar
+ui.ds.celebrate,Party!,Festa!,¡Fiesta!
+ui.ds.randomize,Random,Sortear,Aleatorio

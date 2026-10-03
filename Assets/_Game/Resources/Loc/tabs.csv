@@ -1,0 +1,71 @@
+key,en,pt,es
+tabs.shop.title,Shop,Loja,Tienda
+tabs.leaderboard.title,Ranking,Ranking,Ranking
+tabs.collection.title,Collection,Coleção,Colección
+tabs.profile.title,Profile,Perfil,Perfil
+tabs.shop.section_free,Free goodies,Mimos grátis,Regalos gratis
+tabs.shop.section_boosters,Boosters,Reforços,Potenciadores
+tabs.shop.section_bundles,Bundles,Pacotes,Paquetes
+tabs.shop.daily_gift,Daily gift,Presente diário,Regalo diario
+tabs.shop.every_day,A new gift every day!,Um presente novo todo dia!,¡Un regalo nuevo cada día!
+tabs.shop.ads_left,{0}/{1} left today,{0}/{1} restantes hoje,{0}/{1} restantes hoy
+tabs.shop.ads_done,Come back tomorrow!,Volte amanhã!,¡Vuelve mañana!
+tabs.shop.owned,Owned: {0},Você tem: {0},Tienes: {0}
+tabs.shop.bundle_name,Booster Bundle,Pacote de Reforços,Paquete de Potenciadores
+tabs.shop.bundle_desc,1 of each board booster,1 de cada reforço do tabuleiro,1 de cada potenciador del tablero
+tabs.shop.best_value,Best value!,Melhor oferta!,¡Mejor oferta!
+tabs.shop.refill_name,Refill lives,Recarregar vidas,Recargar vidas
+tabs.shop.refill_desc,Fill up all {0} lives,Enche todas as {0} vidas,Llena tus {0} vidas
+tabs.lb.weekly,Weekly,Semanal,Semanal
+tabs.lb.signin_banner,Sign in to compete worldwide,Entre para competir com o mundo todo,Inicia sesión para competir con todo el mundo
+tabs.lb.signin,Sign in,Entrar,Iniciar sesión
+tabs.lb.top_players,Top {0} players,Top {0} jogadores,Top {0} jugadores
+tabs.lb.error,Couldn't load the ranking. Try again later.,Não foi possível carregar o ranking. Tente mais tarde.,No se pudo cargar el ranking. Inténtalo más tarde.
+tabs.lb.player_title,Player,Jogador,Jugador
+tabs.lb.options_hint,"Is this name offensive? Report it and we'll review it. Reporting or blocking hides this player from your ranking.","Este nome é ofensivo? Denuncie e nós vamos analisar. Denunciar ou bloquear esconde este jogador do seu ranking.","¿Este nombre es ofensivo? Denúncialo y lo revisaremos. Denunciar o bloquear oculta a este jugador de tu ranking."
+tabs.lb.report,Report name,Denunciar nome,Denunciar nombre
+tabs.lb.block,Block player,Bloquear jogador,Bloquear jugador
+tabs.lb.reported,"Thanks! We'll review this name.","Obrigado! Vamos analisar este nome.","¡Gracias! Revisaremos este nombre."
+tabs.lb.blocked,"Player blocked: they won't appear in your ranking anymore.","Jogador bloqueado: não aparece mais no seu ranking.","Jugador bloqueado: ya no aparecerá en tu ranking."
+tabs.lb.report_mail_subject,Potion Pop! - name report,Potion Pop! - denúncia de nome,Potion Pop! - denuncia de nombre
+tabs.lb.report_mail_body,"Reported name: {0}\nReported player: {1}\nReported by: {2}","Nome denunciado: {0}\nJogador denunciado: {1}\nDenunciado por: {2}","Nombre denunciado: {0}\nJugador denunciado: {1}\nDenunciado por: {2}"
+tabs.col.total,Collected: {0}/{1},Coletadas: {0}/{1},Coleccionadas: {0}/{1}
+tabs.col.complete_to_win,Complete the album to win:,Complete o álbum e ganhe:,Completa el álbum y gana:
+tabs.col.album_complete_title,Album complete!,Álbum completo!,¡Álbum completo!
+tabs.col.locked_area,Reach level {0} to unlock this album,Chegue à fase {0} para desbloquear este álbum,Llega al nivel {0} para desbloquear este álbum
+tabs.col.missing_card,Win levels to find this card!,Vença fases para encontrar esta carta!,¡Gana niveles para encontrar esta carta!
+tabs.profile.player_id,ID: {0},ID: {0},ID: {0}
+tabs.profile.edit,Edit,Editar,Editar
+tabs.profile.stats,Statistics,Estatísticas,Estadísticas
+tabs.profile.levels_won,Levels won,Fases vencidas,Niveles ganados
+tabs.profile.best_streak,Best streak,Melhor sequência,Mejor racha
+tabs.profile.total_stars,Total stars,Estrelas,Estrellas
+tabs.profile.matches,Matches,Combinações,Combinaciones
+tabs.profile.hard_won,Hard levels,Fases difíceis,Niveles difíciles
+tabs.profile.max_combo,Best combo,Melhor combo,Mejor combo
+tabs.profile.account,Account,Conta,Cuenta
+tabs.profile.ago,{0} ago,há {0},hace {0}
+tabs.profile.just_now,just now,agora mesmo,justo ahora
+tabs.profile.choose_avatar,Choose your avatar,Escolha seu avatar,Elige tu avatar
+tabs.profile.sign_out_title,Sign out?,Sair da conta?,¿Cerrar sesión?
+tabs.profile.sign_out_confirm,Your progress stays saved on this device and in the cloud.,Seu progresso continua salvo neste aparelho e na nuvem.,Tu progreso sigue guardado en este dispositivo y en la nube.
+tabs.profile.name_refused,"That name isn't allowed. Please choose another one.","Esse nome não é permitido. Escolha outro.","Ese nombre no está permitido. Elige otro."
+tabs.settings.music,Music,Música,Música
+tabs.settings.sound,Sound effects,Efeitos sonoros,Efectos de sonido
+tabs.settings.vibration,Vibration,Vibração,Vibración
+tabs.settings.language,Language,Idioma,Idioma
+tabs.settings.more,More,Mais,Más
+tabs.settings.privacy_policy,Privacy Policy,Privacidade,Privacidad
+tabs.settings.terms,Terms of Use,Termos de Uso,Términos de uso
+tabs.settings.delete_title,Delete account?,Excluir conta?,¿Eliminar cuenta?
+tabs.settings.footer,ID: {0} · v{1},ID: {0} · v{1},ID: {0} · v{1}
+tabs.login.title,Save your progress,Salve seu progresso,Guarda tu progreso
+tabs.login.benefits,Save your progress and play on any device,Salve seu progresso e jogue em qualquer aparelho,Guarda tu progreso y juega en cualquier dispositivo
+tabs.login.benefit_cloud,Never lose your progress,Nunca perca seu progresso,Nunca pierdas tu progreso
+tabs.login.benefit_devices,Play on all your devices,Jogue em todos os seus aparelhos,Juega en todos tus dispositivos
+tabs.login.benefit_ranking,Compete in the global ranking,Dispute o ranking mundial,Compite en el ranking mundial
+tabs.login.not_now,Not now,Agora não,Ahora no
+tabs.buy.get_coins,Get coins,Conseguir moedas,Conseguir monedas
+tabs.card.new_title,New card!,Carta nova!,¡Carta nueva!
+tabs.card.duplicate_title,Duplicate!,Repetida!,¡Repetida!
+tabs.lb.offline_signed_in,"Online ranking unavailable right now. Showing an offline ranking.","Ranking online indisponível no momento. Mostrando um ranking offline.","Ranking en línea no disponible ahora. Mostrando un ranking sin conexión."

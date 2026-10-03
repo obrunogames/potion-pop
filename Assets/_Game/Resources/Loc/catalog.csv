@@ -1,0 +1,66 @@
+key,en,pt,es
+area.grocery,Mini Market,Mercadinho,Minimercado
+area.sweets,Sweet Bakery,Doceria,Pastelería
+area.toys,Toy Store,Loja de Brinquedos,Juguetería
+area.beauty,Beauty Boutique,Butique de Beleza,Boutique de Belleza
+area.fresh,Fruit Market,Hortifruti,Frutería
+product.soda_orange,Orange Soda,Refri de Laranja,Refresco de Naranja
+product.soda_lime,Lime Soda,Refri de Limão,Refresco de Lima
+product.cola_bottle,Cola,Refri de Cola,Refresco de Cola
+product.water_bottle,Water,Água,Agua
+product.milk_carton,Milk,Leite,Leche
+product.juice_strawberry,Strawberry Juice,Suco de Morango,Jugo de Fresa
+product.ketchup,Ketchup,Ketchup,Ketchup
+product.mustard,Mustard,Mostarda,Mostaza
+product.honey_jar,Honey,Mel,Miel
+product.jam_jar,Jam,Geleia,Mermelada
+product.cereal_box,Cereal,Cereal,Cereal
+product.chips_bag,Chips,Batata Chips,Papas Fritas
+product.cupcake,Cupcake,Cupcake,Cupcake
+product.donut,Donut,Rosquinha,Dona
+product.macarons,Macarons,Macarons,Macarons
+product.lollipop,Lollipop,Pirulito,Paleta
+product.gummy_jar,Gummy Bears,Ursinhos de Goma,Ositos de Goma
+product.chocolate_bar,Chocolate,Chocolate,Chocolate
+product.cookie_jar,Cookie Jar,Pote de Biscoitos,Tarro de Galletas
+product.ice_cream,Ice Cream,Sorvete,Helado
+product.croissant,Croissant,Croissant,Croissant
+product.cake_slice,Cake Slice,Fatia de Bolo,Rebanada de Pastel
+product.milkshake,Milkshake,Milkshake,Malteada
+product.cotton_candy,Cotton Candy,Algodão-Doce,Algodón de Azúcar
+product.teddy_bear,Teddy Bear,Ursinho de Pelúcia,Osito de Peluche
+product.rubber_duck,Rubber Duck,Patinho de Borracha,Patito de Goma
+product.bunny_plush,Bunny Plush,Coelhinho,Conejito
+product.toy_rocket,Toy Rocket,Foguete,Cohete
+product.robot_toy,Robot,Robô,Robot
+product.dino_toy,Dino,Dinossauro,Dinosaurio
+product.toy_car,Toy Car,Carrinho,Carrito
+product.beach_ball,Beach Ball,Bola de Praia,Pelota de Playa
+product.puzzle_cube,Puzzle Cube,Cubo Mágico,Cubo Mágico
+product.frog_plush,Frog Plush,Sapinho,Ranita
+product.toy_train,Toy Train,Trenzinho,Trencito
+product.spinning_top,Spinning Top,Pião,Trompo
+product.lipstick,Lipstick,Batom,Labial
+product.nail_polish,Nail Polish,Esmalte,Esmalte
+product.perfume,Perfume,Perfume,Perfume
+product.shampoo,Shampoo,Shampoo,Champú
+product.lotion_pump,Lotion,Loção,Loción
+product.face_cream,Face Cream,Creme Facial,Crema Facial
+product.hand_mirror,Mirror,Espelho,Espejo
+product.hair_brush,Hair Brush,Escova,Cepillo
+product.toothpaste,Toothpaste,Pasta de Dente,Pasta Dental
+product.sunscreen,Sunscreen,Protetor Solar,Protector Solar
+product.makeup_compact,Blush,Blush,Rubor
+product.body_mist,Body Mist,Body Splash,Bruma Corporal
+product.apple,Apple,Maçã,Manzana
+product.pineapple,Pineapple,Abacaxi,Piña
+product.avocado,Avocado,Abacate,Aguacate
+product.banana,Bananas,Bananas,Plátanos
+product.strawberry_basket,Strawberries,Morangos,Fresas
+product.carrots,Carrots,Cenouras,Zanahorias
+product.broccoli,Broccoli,Brócolis,Brócoli
+product.eggplant,Eggplant,Berinjela,Berenjena
+product.grapes,Grapes,Uvas,Uvas
+product.watermelon,Watermelon,Melancia,Sandía
+product.peach,Peach,Pêssego,Durazno
+product.corn,Corn,Milho,Maíz
