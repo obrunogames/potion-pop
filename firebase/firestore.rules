@@ -15,7 +15,9 @@ rules_version = '2';
 // * Reports can't be read, changed or deleted from the app, and nobody can file one in someone else's name.
 // Everything else is denied.
 //
-// Deploy: Firebase console > Firestore Database > Rules (paste + Publish), or `firebase deploy --only firestore:rules`.
+// Firebase project: potion-pop-game (firebase/.firebaserc), database (default) in southamerica-east1.
+// Deploy from the firebase/ folder: `firebase deploy --only firestore` (rules + indexes) or
+// `firebase deploy --only firestore:rules`. See Docs/Firebase-Setup.md.
 service cloud.firestore {
   match /databases/{database}/documents {
 

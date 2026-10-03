@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9e6bb0ba8593e45d6af809db63959083, type: 3}
   m_Name: ServicesConfig
   m_EditorClassIdentifier: PotionPop.Runtime::PotionPop.Services.ServicesConfig
-  firebaseApiKey: 
-  firebaseProjectId: 
-  googleWebClientId: 
-  googleIosClientId: 
+  firebaseApiKey: AIzaSyD-oy184WTZrWbZqCxJqcrfMYaICskMY3w
+  firebaseProjectId: potion-pop-game
+  googleWebClientId: 975002712260-fn44ai5c45g2u42l1n7kbohk3soaapu8.apps.googleusercontent.com
+  googleIosClientId: 975002712260-50t6snes3rosvrqf6lj6csb1pnupfr3j.apps.googleusercontent.com
   admobAndroidAppId: ca-app-pub-3940256099942544~3347511713
   admobIosAppId: ca-app-pub-3940256099942544~1458002511
   bannerAndroid: ca-app-pub-3940256099942544/9214589741
