@@ -500,7 +500,7 @@ namespace PotionPop.Game
             if (bottle < 0 || bottle >= Board.Count || !Board[bottle].IsLocked) return;
             int token = _token;
             BusyBegin(AdBusyTimeout);
-            AdsService.ShowRewarded(AdPlacement.UnlockShelf, earned =>
+            AdsService.ShowRewarded(AdPlacement.BreakStone, earned =>
             {
                 if (token != _token) return;
                 BusyDone();

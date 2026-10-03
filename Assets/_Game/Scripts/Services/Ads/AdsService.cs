@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace PotionPop.Services
 {
-    public enum AdPlacement { Continue, DoubleCoins, ExtraHeart, ExtraSpin, ShopCoins, UnlockShelf }
+    public enum AdPlacement { Continue, DoubleCoins, ExtraHeart, ExtraSpin, ShopCoins, BreakStone }
 
     /// <summary>
     /// Google Mobile Ads (AdMob) with UMP consent; simulated overlay when SP_ADMOB is missing, in the Editor with
@@ -103,7 +103,7 @@ namespace PotionPop.Services
                 case AdPlacement.ExtraHeart: return "ads.placement.extra_heart";
                 case AdPlacement.ExtraSpin: return "ads.placement.extra_spin";
                 case AdPlacement.ShopCoins: return "ads.placement.shop_coins";
-                case AdPlacement.UnlockShelf: return "ads.placement.unlock_shelf";
+                case AdPlacement.BreakStone: return "ads.placement.break_stone";
                 default: return "ads.placement.continue";
             }
         }

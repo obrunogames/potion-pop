@@ -4,13 +4,13 @@ using UnityEngine;
 namespace PotionPop.Services
 {
     /// <summary>
-    /// Editor sign-in simulator: after ~1 s returns the fake user "Mimi Fan" with a uid that is stable per machine
+    /// Editor sign-in simulator: after ~1 s returns the fake user "Luna Fan" with a uid that is stable per machine
     /// ("mock-" + hash of SystemInfo.deviceUniqueIdentifier). Works for Google and Apple buttons alike.
     /// </summary>
     public static class MockAuthProvider
     {
-        public const string DisplayName = "Mimi Fan";
-        public const string Email = "mimi.fan@example.com";
+        public const string DisplayName = "Luna Fan";
+        public const string Email = "luna.fan@example.com";
         public const string IdToken = "mock-id-token";
         public const float DelaySeconds = 1f;
 
