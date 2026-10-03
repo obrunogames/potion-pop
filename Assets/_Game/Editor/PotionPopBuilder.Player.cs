@@ -32,6 +32,15 @@ namespace PotionPop.EditorTools
         {
             PlayerSettings.companyName = CompanyName;
             PlayerSettings.productName = ProductName;
+            // No Unity hardware statistics: the privacy policy says the game has no analytics. The property is not public
+            // API (Player Settings › "Hardware Statistics"), so it is set through reflection when available.
+            try
+            {
+                var prop = typeof(PlayerSettings).GetProperty("submitAnalytics",
+                    System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                if (prop != null && prop.CanWrite) prop.SetValue(null, false);
+            }
+            catch (System.Exception e) { Debug.LogWarning(EditorUtil.LogPrefix + "Could not turn off hardware statistics: " + e.Message); }
             foreach (var target in new[] { NamedBuildTarget.Android, NamedBuildTarget.iOS, NamedBuildTarget.Standalone })
                 PlayerSettings.SetApplicationIdentifier(target, BundleId);
 

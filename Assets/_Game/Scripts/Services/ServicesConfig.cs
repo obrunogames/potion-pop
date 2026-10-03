@@ -39,6 +39,8 @@ namespace PotionPop.Services
         [Header("Links")]
         public string privacyPolicyUrl = "https://brunogames.com.br/jogos/potion-pop/privacidade";
         public string termsUrl = "https://brunogames.com.br/termos";
+        [Tooltip("Support page (FAQ + contact), opened from Settings.")]
+        public string supportUrl = "https://brunogames.com.br/jogos/potion-pop/suporte";
         public string supportEmail = "suporte@brunogames.com.br";
 
         public bool FirebaseConfigured => !string.IsNullOrEmpty(firebaseApiKey) && !string.IsNullOrEmpty(firebaseProjectId);
