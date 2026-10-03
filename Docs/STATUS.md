@@ -24,6 +24,9 @@
 - **QA no editor** (`Potion Pop ▸ QA`): tour automático com capturas de todas as telas e popups em 1080×2340
   (`Screenshots/qa/`), fases jogadas sozinhas pelo solucionador (inclusive fase difícil com cores escondidas e pedra),
   fluxo vitória → próxima fase → nova carta → próxima fase.
+- **Build Android de teste OK**: APK de desenvolvimento gerado em modo batch numa cópia do projeto
+  (`python3 Tools/release/build_release.py android-dev` → `Builds/dev/PotionPop-1.0.0-dev.apk`, 54 MB) — Gradle,
+  dependências do AdMob e do login Google resolvidas.
 - **Firebase** `potion-pop-game` configurado pela CLI (Firestore + regras, login Google, apps Android/iOS com SHA-1/256,
   chave de upload Android em `Keystore/`, fora do git). Detalhes: `Docs/Firebase-Setup.md`.
 
