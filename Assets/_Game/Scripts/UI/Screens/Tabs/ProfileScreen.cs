@@ -7,7 +7,9 @@ using UnityEngine.UI;
 namespace PotionPop.UI
 {
     /// <summary>
-    /// Profile tab: big avatar (→ avatar picker), editable name (TMP_InputField, 16 chars), player ID, stats grid and
+    /// Profile tab: big avatar (→ avatar picker with the 12 avatars), editable name (TMP_InputField, 16 chars, checked by
+    /// NameFilter), player ID + level pills, the 3x3 stats grid (levels won, stars, 3-star levels, bottles completed,
+    /// best streak, best combo, hard levels, replays won, pours) and
     /// the account card (signed in: provider, cloud state, last sync, Sync now, Sign out; signed out: benefits and the
     /// Google / Apple sign-in buttons). A gear button opens Settings.
     /// </summary>
@@ -230,16 +232,19 @@ namespace PotionPop.UI
 
         void BuildStats()
         {
-            const int cols = 3;
+            const int cols = 3, rows = 3;
             float gap = DS.Space.S;
             float cw = (_w - gap * (cols - 1)) / cols;
-            var grid = UIKit.Grid(_list, new Vector2(_w, StatH * 2f + gap), new Vector2(cw, StatH), new Vector2(gap, gap), cols);
+            var grid = UIKit.Grid(_list, new Vector2(_w, StatH * rows + gap * (rows - 1)), new Vector2(cw, StatH), new Vector2(gap, gap), cols);
             AddStat(grid.transform, cw, "icon_trophy", "tabs.profile.levels_won", false);
-            AddStat(grid.transform, cw, "icon_flame", "tabs.profile.best_streak", false);
             AddStat(grid.transform, cw, "icon_star", "tabs.profile.total_stars", false);
-            AddStat(grid.transform, cw, "icon_check", "tabs.profile.matches", false);
+            AddStat(grid.transform, cw, "icon_crown", "tabs.profile.perfect_levels", false);
+            AddStat(grid.transform, cw, "icon_bottle", "tabs.profile.bottles", false);
+            AddStat(grid.transform, cw, "icon_flame", "tabs.profile.best_streak", false);
+            AddStat(grid.transform, cw, "icon_medal_gold", "tabs.profile.max_combo", true);
             AddStat(grid.transform, cw, "icon_skull", "tabs.profile.hard_won", false);
-            AddStat(grid.transform, cw, "icon_crown", "tabs.profile.max_combo", true);
+            AddStat(grid.transform, cw, "icon_restart", "tabs.profile.replays", false);
+            AddStat(grid.transform, cw, "icon_pour", "tabs.profile.pours", false);
         }
 
         void AddStat(Transform parent, float cw, string icon, string key, bool combo)
@@ -300,7 +305,12 @@ namespace PotionPop.UI
         void RefreshStats(bool animate)
         {
             var d = SaveSystem.Data;
-            long[] values = { d.levelsWon, d.bestStreak, d.totalStars, d.totalMatches, d.hardLevelsWon, d.maxCombo };
+            long[] values =
+            {
+                d.levelsWon, d.totalStars, Progress.PerfectLevels,
+                d.totalBottles, d.bestStreak, d.maxCombo,
+                d.hardLevelsWon, d.replaysWon, d.totalPours,
+            };
             for (int i = 0; i < _stats.Count && i < values.Length; i++)
             {
                 var s = _stats[i];

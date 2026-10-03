@@ -1,0 +1,13 @@
+key,en,pt,es
+worlds.title,Worlds,Mundos,Mundos
+worlds.world_number,World {0},Mundo {0},Mundo {0}
+worlds.cycle_name,{0} {1},{0} {1},{0} {1}
+worlds.levels_range,Levels {0}–{1},Fases {0}–{1},Niveles {0}–{1}
+worlds.levels_won,{0}/{1} levels,{0}/{1} fases,{0}/{1} niveles
+worlds.current,Current,Atual,Actual
+worlds.reach_level,Reach level {0},Chegue à fase {0},Llega al nivel {0}
+worlds.locked_level,Play level {0} first!,Jogue a fase {0} primeiro!,¡Primero juega el nivel {0}!
+worlds.map_info,{0}/{1}  ·  Levels {2}–{3},{0}/{1}  ·  Fases {2}–{3},{0}/{1}  ·  Niveles {2}–{3}
+worlds.next_world,Next: {0},Próximo: {0},Siguiente: {0}
+worlds.more_coming,Keep winning to unlock new worlds!,Continue vencendo para desbloquear novos mundos!,¡Sigue ganando para desbloquear nuevos mundos!
+worlds.album_progress,Album: {0}/{1} cards,Álbum: {0}/{1} cartas,Álbum: {0}/{1} cartas

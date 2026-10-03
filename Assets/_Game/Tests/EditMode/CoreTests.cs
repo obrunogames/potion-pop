@@ -119,20 +119,26 @@ namespace PotionPop.Tests
         {
             var d = new PlayerData
             {
-                playerId = "1234567", playerName = "Mimi", level = 42, coins = 999, totalStars = 123456789012L,
+                playerId = "1234567", playerName = "Luna", level = 42, coins = 999, totalStars = 123456789012L,
                 hearts = 2, nextHeartAt = 1700000000, undo = 7, rainbow = 0, language = "pt", musicOn = false,
                 dailyDay = 5, dailyLastClaimDay = 20000, questDay = 20001, weekId = 2900, weeklyStars = 77,
+                levelStars = "3213", totalBottles = 345, totalPours = 6789, replaysWon = 4, avatar = "dragon",
             };
-            d.cards.Add("cupcake");
-            d.cards.Add("donut");
-            d.albumsClaimed.Add("grocery");
-            d.seenTutorials.Add("hammer");
+            d.cards.Add("glow_mushroom");
+            d.cards.Add("firefly_jar");
+            d.albumsClaimed.Add("forest");
+            d.seenTutorials.Add("undo");
             d.quests.Add(new QuestState { kind = (int)QuestKind.ReachCombo, target = 5, progress = 3, claimed = false });
 
             var back = SaveSystem.FromJson(SaveSystem.ToJson(d));
             Assert.NotNull(back);
             Assert.AreEqual("1234567", back.playerId);
-            Assert.AreEqual("Mimi", back.playerName);
+            Assert.AreEqual("Luna", back.playerName);
+            Assert.AreEqual("3213", back.levelStars);
+            Assert.AreEqual(345, back.totalBottles);
+            Assert.AreEqual(6789, back.totalPours);
+            Assert.AreEqual(4, back.replaysWon);
+            Assert.AreEqual("dragon", back.avatar);
             Assert.AreEqual(42, back.level);
             Assert.AreEqual(999, back.coins);
             Assert.AreEqual(123456789012L, back.totalStars);
@@ -144,9 +150,9 @@ namespace PotionPop.Tests
             Assert.IsFalse(back.musicOn);
             Assert.AreEqual(5, back.dailyDay);
             Assert.AreEqual(20000, back.dailyLastClaimDay);
-            CollectionAssert.AreEqual(new[] { "cupcake", "donut" }, back.cards);
-            CollectionAssert.AreEqual(new[] { "grocery" }, back.albumsClaimed);
-            CollectionAssert.AreEqual(new[] { "hammer" }, back.seenTutorials);
+            CollectionAssert.AreEqual(new[] { "glow_mushroom", "firefly_jar" }, back.cards);
+            CollectionAssert.AreEqual(new[] { "forest" }, back.albumsClaimed);
+            CollectionAssert.AreEqual(new[] { "undo" }, back.seenTutorials);
             Assert.AreEqual(1, back.quests.Count);
             Assert.AreEqual((int)QuestKind.ReachCombo, back.quests[0].kind);
             Assert.AreEqual(3, back.quests[0].progress);
@@ -198,12 +204,14 @@ namespace PotionPop.Tests
             Assert.IsTrue(long.TryParse(d.playerId, out _));
             Assert.AreEqual(300, d.coins);
             Assert.AreEqual(5, d.hearts);
-            Assert.AreEqual(2, d.undo);
+            Assert.AreEqual(3, d.undo);
             Assert.AreEqual(1, d.wand);
-            Assert.AreEqual(2, d.bottle);
+            Assert.AreEqual(1, d.bottle);
             Assert.AreEqual(2, d.shuffle);
             Assert.AreEqual(1, d.crystal);
             Assert.AreEqual(1, d.rainbow);
+            Assert.AreEqual(PlayerProfile.DefaultAvatar, d.avatar, "new players start as Luna");
+            Assert.AreEqual("", d.levelStars);
             Assert.IsNotEmpty(SaveSystem.MemoryPrimaryJson, "fresh save is written");
 
             string id = d.playerId;
@@ -349,32 +357,42 @@ namespace PotionPop.Tests
                 Assert.IsFalse(Economy.TrySpendCoins(501, "test"));
                 Assert.AreEqual(500, Economy.Coins);
 
-                Assert.IsTrue(Economy.TryBuyBoosterPack(BoosterType.Wand));   // 3 for 350
-                Assert.AreEqual(150, Economy.Coins);
+                Assert.IsTrue(Economy.TryBuyBoosterPack(BoosterType.Wand));   // 3 for 400
+                Assert.AreEqual(100, Economy.Coins);
                 Assert.AreEqual(4, Economy.GetBooster(BoosterType.Wand));
-                Assert.IsFalse(Economy.TryBuyBoosterPack(BoosterType.Undo)); // 300 > 150
-                Assert.AreEqual(2, Economy.GetBooster(BoosterType.Undo));
+                Assert.IsFalse(Economy.TryBuyBoosterPack(BoosterType.Undo)); // 200 > 100
+                Assert.AreEqual(3, Economy.GetBooster(BoosterType.Undo));
             }
             finally { Economy.OnCoinsChanged -= onCoins; }
 
             Assert.IsTrue(Economy.TryUseBooster(BoosterType.Rainbow));
             Assert.IsFalse(Economy.TryUseBooster(BoosterType.Rainbow));
 
+            // GDD §5: in-game Undo 3 · Shuffle 6 · Extra Bottle 8 · Magic Wand 12; pre-level Rainbow 10 · Crystal 15.
             Assert.AreEqual(3, Economy.BoosterUnlockLevel(BoosterType.Undo));
-            Assert.AreEqual(5, Economy.BoosterUnlockLevel(BoosterType.Wand));
-            Assert.AreEqual(7, Economy.BoosterUnlockLevel(BoosterType.Bottle));
-            Assert.AreEqual(9, Economy.BoosterUnlockLevel(BoosterType.Shuffle));
-            Assert.AreEqual(6, Economy.BoosterUnlockLevel(BoosterType.Crystal));
-            Assert.AreEqual(11, Economy.BoosterUnlockLevel(BoosterType.Rainbow));
-            Assert.AreEqual((3, 200), Economy.BoosterPack(BoosterType.Bottle));
-            Assert.AreEqual((3, 200), Economy.BoosterPack(BoosterType.Shuffle));
-            Assert.AreEqual((3, 250), Economy.BoosterPack(BoosterType.Crystal));
+            Assert.AreEqual(6, Economy.BoosterUnlockLevel(BoosterType.Shuffle));
+            Assert.AreEqual(8, Economy.BoosterUnlockLevel(BoosterType.Bottle));
+            Assert.AreEqual(12, Economy.BoosterUnlockLevel(BoosterType.Wand));
+            Assert.AreEqual(10, Economy.BoosterUnlockLevel(BoosterType.Rainbow));
+            Assert.AreEqual(15, Economy.BoosterUnlockLevel(BoosterType.Crystal));
+            Assert.AreEqual((3, 200), Economy.BoosterPack(BoosterType.Undo));
+            Assert.AreEqual((3, 250), Economy.BoosterPack(BoosterType.Shuffle));
+            Assert.AreEqual((3, 350), Economy.BoosterPack(BoosterType.Bottle));
+            Assert.AreEqual((3, 400), Economy.BoosterPack(BoosterType.Wand));
             Assert.AreEqual((3, 300), Economy.BoosterPack(BoosterType.Rainbow));
+            Assert.AreEqual((3, 250), Economy.BoosterPack(BoosterType.Crystal));
+
+            CollectionAssert.AreEqual(new[] { BoosterType.Undo, BoosterType.Shuffle, BoosterType.Bottle, BoosterType.Wand }, Economy.InGameBoosters);
+            CollectionAssert.AreEqual(new[] { BoosterType.Rainbow, BoosterType.Crystal }, Economy.PreLevelBoosters);
+            Assert.IsTrue(Economy.IsPreLevel(BoosterType.Crystal));
+            Assert.IsFalse(Economy.IsPreLevel(BoosterType.Undo));
+            Assert.AreEqual("booster_bottle", Economy.BoosterSprite(BoosterType.Bottle));
+            Assert.AreEqual("booster.rainbow.desc", Economy.BoosterDescKey(BoosterType.Rainbow));
 
             Assert.IsFalse(Economy.IsBoosterUnlocked(BoosterType.Undo));
             Progress.SetLevel(3);
             Assert.IsTrue(Economy.IsBoosterUnlocked(BoosterType.Undo));
-            Assert.IsFalse(Economy.IsBoosterUnlocked(BoosterType.Wand));
+            Assert.IsFalse(Economy.IsBoosterUnlocked(BoosterType.Shuffle));
         }
 
         [Test]
@@ -391,13 +409,15 @@ namespace PotionPop.Tests
         }
 
         [Test]
-        public void StarChest_OpensEvery1000Stars()
+        public void StarChest_OpensEvery30Stars()
         {
+            Assert.AreEqual(30, StarChest.Goal);
             Progress.SetLevel(20);   // every booster unlocked
-            Economy.AddStars(999);
+            Economy.AddStars(29);
             Assert.IsFalse(StarChest.CanOpen);
+            Assert.AreEqual(29f / 30f, StarChest.Progress01, 1e-5);
             Assert.AreEqual(0, StarChest.Open().Length);
-            Economy.AddStars(1001);
+            Economy.AddStars(31);
             Assert.AreEqual(2, StarChest.ChestsReady);
 
             int coins = Economy.Coins;
@@ -409,7 +429,7 @@ namespace PotionPop.Tests
             foreach (var b in Economy.AllBoosters) after += Economy.GetBooster(b);
             Assert.AreEqual(boosters + 2, after);
             Assert.AreEqual(RewardType.Coins, rewards[0].type);
-            Assert.AreEqual(1000, StarChest.Progress);
+            Assert.AreEqual(30, StarChest.Progress);
             Assert.IsTrue(StarChest.CanOpen);
         }
 
@@ -500,9 +520,9 @@ namespace PotionPop.Tests
             Advance(Day);
             Assert.IsTrue(DailyRewards.CanClaim);
             Assert.AreEqual(1, DailyRewards.CurrentDay);
-            int hammers = Economy.GetBooster(BoosterType.Undo);
+            int undos = Economy.GetBooster(BoosterType.Undo);
             DailyRewards.Claim();
-            Assert.AreEqual(hammers + 1, Economy.GetBooster(BoosterType.Undo));
+            Assert.AreEqual(undos + 1, Economy.GetBooster(BoosterType.Undo));
 
             // Missing a day resets the cycle to day 1.
             Advance(2 * Day);
@@ -526,7 +546,11 @@ namespace PotionPop.Tests
             Assert.AreEqual(5, chest.Length);
             Assert.AreEqual(300, chest[0].amount);
             Assert.IsTrue(DailyRewards.IsChestDay(6));
-            Assert.AreEqual(2, DailyRewards.DayRewards(3).Length, "Freeze + Shuffle");
+            var day4 = DailyRewards.DayRewards(3);
+            Assert.AreEqual(2, day4.Length, "Extra Bottle + Shuffle");
+            Assert.AreEqual(BoosterType.Bottle, day4[0].booster);
+            Assert.AreEqual(BoosterType.Shuffle, day4[1].booster);
+            Assert.AreEqual(BoosterType.Wand, DailyRewards.DayRewards(5)[0].booster);
             Assert.AreEqual(2, DailyRewards.DayRewards(5)[0].amount, "Wand x2");
         }
 
@@ -686,15 +710,24 @@ namespace PotionPop.Tests
                 Assert.AreEqual(Quests.TargetOf(today[i].kind), today[i].target);
                 Assert.AreEqual(0, today[i].progress);
             }
+            // GDD §6 daily quests.
             Assert.AreEqual(3, Quests.TargetOf(QuestKind.WinLevels));
             Assert.AreEqual(80, Quests.RewardOf(QuestKind.WinLevels).amount);
-            Assert.AreEqual(40, Quests.TargetOf(QuestKind.CompleteBottles));
+            Assert.AreEqual(25, Quests.TargetOf(QuestKind.CompleteBottles));
+            Assert.AreEqual(60, Quests.RewardOf(QuestKind.CompleteBottles).amount);
+            Assert.AreEqual(3, Quests.TargetOf(QuestKind.ReachCombo));
             Assert.AreEqual(BoosterType.Bottle, Quests.RewardOf(QuestKind.ReachCombo).booster);
-            Assert.AreEqual(150, Quests.TargetOf(QuestKind.CollectStars));
+            Assert.AreEqual(2, Quests.TargetOf(QuestKind.UseBoosters));
+            Assert.AreEqual(9, Quests.TargetOf(QuestKind.CollectStars));
+            Assert.AreEqual(BoosterType.Undo, Quests.RewardOf(QuestKind.CollectStars).booster);
             Assert.AreEqual(100, Quests.RewardOf(QuestKind.WinHard).amount);
+            Assert.AreEqual(BoosterType.Shuffle, Quests.RewardOf(QuestKind.WinStreak2).booster);
+            Assert.AreEqual(2, Quests.TargetOf(QuestKind.WinThreeStars));
             Assert.AreEqual(BoosterType.Wand, Quests.RewardOf(QuestKind.WinThreeStars).booster);
             Assert.AreEqual("Win 3 levels", new QuestView { kind = QuestKind.WinLevels, target = 3 }.Title);
             Assert.AreEqual("Win 2 levels in a row", new QuestView { kind = QuestKind.WinStreak2, target = 1 }.Title);
+            Assert.AreEqual("Fill 25 bottles", new QuestView { kind = QuestKind.CompleteBottles, target = 25 }.Title);
+            Assert.AreEqual("Win 2 levels with 3 stars", new QuestView { kind = QuestKind.WinThreeStars, target = 2 }.Title);
         }
 
         [Test]
@@ -702,31 +735,46 @@ namespace PotionPop.Tests
         {
             ForceQuests(QuestKind.ReachCombo, QuestKind.WinThreeStars, QuestKind.CompleteBottles);
 
-            Quests.Report(QuestKind.ReachCombo, 1, 3);
-            Assert.AreEqual(3, Quests.Today()[0].progress);
             Quests.Report(QuestKind.ReachCombo, 1, 2);
-            Assert.AreEqual(3, Quests.Today()[0].progress, "combo progress keeps the best value");
-            Quests.Report(QuestKind.ReachCombo, 1, 9);
-            Assert.AreEqual(5, Quests.Today()[0].progress);
+            Assert.AreEqual(2, Quests.Today()[0].progress);
+            Quests.Report(QuestKind.ReachCombo, 1, 1);
+            Assert.AreEqual(2, Quests.Today()[0].progress, "combo progress keeps the best value");
+            Quests.Report(QuestKind.ReachCombo, 1, 5);
+            Assert.AreEqual(3, Quests.Today()[0].progress, "capped at the target");
             Assert.IsTrue(Quests.Today()[0].IsComplete);
 
-            Quests.Report(QuestKind.WinThreeStars, 1, 29);
-            Assert.AreEqual(0, Quests.Today()[1].progress);
-            Quests.Report(QuestKind.WinThreeStars, 1, 30);
+            Quests.Report(QuestKind.WinThreeStars);
             Assert.AreEqual(1, Quests.Today()[1].progress);
+            Quests.Report(QuestKind.WinThreeStars);
+            Assert.IsTrue(Quests.Today()[1].IsComplete);
 
-            for (int i = 0; i < 39; i++) Progress.ReportBottleCompleted(1);
-            Assert.AreEqual(39, Quests.Today()[2].progress);
+            for (int i = 0; i < 24; i++) Progress.ReportBottleCompleted(1);
+            Assert.AreEqual(24, Quests.Today()[2].progress);
+            Assert.AreEqual(24, SaveSystem.Data.totalBottles);
             Assert.AreEqual(2, Quests.ClaimableCount);
 
-            int freezes = Economy.GetBooster(BoosterType.Bottle);
+            int bottles = Economy.GetBooster(BoosterType.Bottle);
             var reward = Quests.Claim(0);
             Assert.AreEqual(RewardType.Booster, reward.type);
-            Assert.AreEqual(freezes + 1, Economy.GetBooster(BoosterType.Bottle));
+            Assert.AreEqual(bottles + 1, Economy.GetBooster(BoosterType.Bottle));
             Assert.IsTrue(Quests.Claim(0).IsEmpty, "can't claim twice");
             Assert.IsTrue(Quests.Claim(2).IsEmpty, "can't claim incomplete");
             Assert.IsTrue(Quests.Claim(99).IsEmpty);
             Assert.AreEqual(1, Quests.ClaimableCount);
+
+            // Combos also count from bottles completed in a chain.
+            ForceQuests(QuestKind.ReachCombo, QuestKind.WinLevels, QuestKind.UseBoosters);
+            Progress.ReportBottleCompleted(1);
+            Progress.ReportBottleCompleted(2);
+            Assert.AreEqual(2, Quests.Today()[0].progress);
+            Progress.ReportBottleCompleted(3);
+            Assert.IsTrue(Quests.Today()[0].IsComplete);
+            Assert.AreEqual(3, SaveSystem.Data.maxCombo);
+            Progress.ReportBoosterUsed(BoosterType.Undo);
+            Progress.ReportBoosterUsed(BoosterType.Shuffle);
+            Assert.IsTrue(Quests.Today()[2].IsComplete);
+            Progress.ReportPour();
+            Assert.AreEqual(1, SaveSystem.Data.totalPours);
 
             // A new day brings new quests.
             Advance(Day);
@@ -749,48 +797,170 @@ namespace PotionPop.Tests
         [Test]
         public void Progress_ReportWinAndFail()
         {
-            ForceQuests(QuestKind.WinLevels, QuestKind.WinStreak2, QuestKind.CollectStars);
-            var r = Progress.ReportWin(1, false, 3, 20, 3);
-            Assert.AreEqual(2, Progress.CurrentLevel);
-            Assert.AreEqual(20, r.coins);
-            Assert.AreEqual(1, r.winStreak);
-            Assert.AreEqual(12, Economy.TotalStars);
-            Assert.AreEqual(1, SaveSystem.Data.levelsWon);
-            Assert.AreEqual(1, Quests.Today()[0].progress);
-            Assert.AreEqual(0, Quests.Today()[1].progress, "streak of 1 doesn't count");
-            Assert.AreEqual(12, Quests.Today()[2].progress);
+            Assert.IsTrue(Catalog.LoadFromJson(TestCatalog));   // deterministic cards (no duplicate coins)
+            try
+            {
+                ForceQuests(QuestKind.WinLevels, QuestKind.WinStreak2, QuestKind.CollectStars);
+                var r = Progress.ReportWin(1, false, 3, 6, 1);
+                Assert.AreEqual(2, Progress.CurrentLevel);
+                Assert.AreEqual(20, r.coins);
+                Assert.AreEqual(1, r.winStreak);
+                Assert.AreEqual(3, r.stars);
+                Assert.AreEqual(0, r.previousBest);
+                Assert.AreEqual(3, r.starsGained);
+                Assert.IsFalse(r.replay);
+                Assert.IsNotNull(r.cardId, "first wins grant a card");
+                Assert.AreEqual(3, Economy.TotalStars);
+                Assert.AreEqual(3, Progress.BestStars(1));
+                Assert.AreEqual(1, SaveSystem.Data.levelsWon);
+                Assert.AreEqual(1, Quests.Today()[0].progress);
+                Assert.AreEqual(0, Quests.Today()[1].progress, "streak of 1 doesn't count");
+                Assert.AreEqual(3, Quests.Today()[2].progress);
 
-            r = Progress.ReportWin(2, true, 3, 20, 2);
-            Assert.AreEqual(40, r.coins, "hard levels pay double");
-            Assert.AreEqual(2, r.winStreak);
-            Assert.AreEqual(1, Quests.Today()[1].progress, "two wins in a row");
-            Assert.AreEqual(1, SaveSystem.Data.hardLevelsWon);
+                r = Progress.ReportWin(2, true, 2, 30, 2);
+                Assert.AreEqual(40, r.coins, "hard levels pay double");
+                Assert.AreEqual(2, r.winStreak);
+                Assert.AreEqual(2, r.starsGained);
+                Assert.AreEqual(5, Economy.TotalStars);
+                Assert.AreEqual(1, Quests.Today()[1].progress, "two wins in a row");
+                Assert.AreEqual(5, Quests.Today()[2].progress);
+                Assert.AreEqual(1, SaveSystem.Data.hardLevelsWon);
+                Assert.AreEqual(2, SaveSystem.Data.maxCombo);
 
-            int hearts = Lives.Hearts;
-            Progress.ReportFail(3);
-            Assert.AreEqual(0, Progress.WinStreak);
-            Assert.AreEqual(2, Progress.BestStreak);
-            Assert.AreEqual(hearts - 1, Lives.Hearts);
-            Assert.AreEqual(3, Progress.CurrentLevel, "a loss doesn't change the level");
+                int hearts = Lives.Hearts;
+                Progress.ReportFail(3);
+                Assert.AreEqual(0, Progress.WinStreak);
+                Assert.AreEqual(2, Progress.BestStreak);
+                Assert.AreEqual(hearts - 1, Lives.Hearts);
+                Assert.AreEqual(3, Progress.CurrentLevel, "a loss doesn't change the level");
+                Assert.AreEqual(1, SaveSystem.Data.levelsLost);
 
-            Progress.SetLevel(20);
-            r = Progress.ReportWin(20, true, 3, 20, 1);
-            Assert.IsTrue(r.areaChanged);
-            Assert.AreEqual(1, r.newAreaNumber);
-            Assert.IsTrue(Progress.HasUnseenArea);
-            Progress.MarkAreaSeen();
-            Assert.IsFalse(Progress.HasUnseenArea);
+                Progress.SetLevel(20);
+                r = Progress.ReportWin(20, true, 1, 50, 1);
+                Assert.IsTrue(r.areaChanged);
+                Assert.AreEqual(1, r.newAreaNumber);
+                Assert.IsTrue(Progress.HasUnseenArea);
+                Progress.MarkAreaSeen();
+                Assert.IsFalse(Progress.HasUnseenArea);
+                Assert.AreEqual(1, Progress.BestStars(20));
+                Assert.AreEqual(0, Progress.BestStars(21), "not won yet");
+                Assert.IsTrue(Progress.IsLevelWon(10), "levels below the current one count as won");
+            }
+            finally { Catalog.Reload(); }
+        }
+
+        [Test]
+        public void Progress_ReplaysOnlyPayNewStars()
+        {
+            Assert.IsTrue(Catalog.LoadFromJson(TestCatalog));
+            try
+            {
+                Progress.ReportWin(1, false, 1, 20, 1);
+                Progress.ReportWin(2, false, 3, 20, 1);
+                Assert.AreEqual(3, Progress.CurrentLevel);
+                Assert.AreEqual(2, Progress.WinStreak);
+                Assert.AreEqual(4, Economy.TotalStars);
+                int coins = Economy.Coins, cards = Collection.TotalOwned;
+
+                int starEvents = 0;
+                Action<int, int> onStars = (level, stars) => starEvents++;
+                Progress.OnLevelStarsChanged += onStars;
+                LevelResult r;
+                try { r = Progress.ReportWin(1, false, 3, 12, 4, true); }
+                finally { Progress.OnLevelStarsChanged -= onStars; }
+                Assert.IsTrue(r.replay);
+                Assert.AreEqual(1, r.previousBest);
+                Assert.AreEqual(2, r.starsGained);
+                Assert.AreEqual(2 * Progress.ReplayCoinsPerStar, r.coins);
+                Assert.AreEqual(coins + 2 * Progress.ReplayCoinsPerStar, Economy.Coins, "+10 coins per new star");
+                Assert.IsNull(r.cardId, "no card on replays");
+                Assert.AreEqual(cards, Collection.TotalOwned);
+                Assert.AreEqual(2, Progress.WinStreak, "no streak change");
+                Assert.AreEqual(2, r.winStreak);
+                Assert.AreEqual(3, Progress.CurrentLevel, "the level does not move");
+                Assert.AreEqual(2, SaveSystem.Data.levelsWon, "levels won counts first wins only");
+                Assert.AreEqual(1, SaveSystem.Data.replaysWon);
+                Assert.AreEqual(3, Progress.BestStars(1));
+                Assert.AreEqual(6, Economy.TotalStars);
+                Assert.AreEqual(1, starEvents);
+                Assert.IsFalse(r.areaChanged);
+
+                // No better: nothing to pay.
+                coins = Economy.Coins;
+                r = Progress.ReportWin(1, false, 2, 30, 1, true);
+                Assert.AreEqual(0, r.starsGained);
+                Assert.AreEqual(0, r.coins);
+                Assert.AreEqual(coins, Economy.Coins);
+                Assert.AreEqual(3, Progress.BestStars(1), "a worse result never lowers the best");
+
+                // A failed replay costs a heart but keeps the streak; failing the current level resets it.
+                int hearts = Lives.Hearts;
+                Progress.ReportFail(1);
+                Assert.AreEqual(hearts - 1, Lives.Hearts);
+                Assert.AreEqual(2, Progress.WinStreak);
+                Progress.ReportFail(3);
+                Assert.AreEqual(0, Progress.WinStreak);
+
+                // "Replaying" the current level is a normal first win.
+                r = Progress.ReportWin(3, false, 2, 30, 1, true);
+                Assert.IsFalse(r.replay);
+                Assert.AreEqual(4, Progress.CurrentLevel);
+                Assert.IsNotNull(r.cardId);
+            }
+            finally { Catalog.Reload(); }
+        }
+
+        [Test]
+        public void Progress_WorldHelpers()
+        {
+            Assert.AreEqual(1, Areas.FirstLevelOfArea(0));
+            Assert.AreEqual(20, Areas.LastLevelOfArea(0));
+            Assert.AreEqual(21, Areas.FirstLevelOfArea(1));
+            Assert.AreEqual(40, Areas.LastLevelOfArea(1));
+            Assert.AreEqual(60, Areas.MaxStarsPerArea);
+            Assert.AreEqual(1, Areas.AreaNumberForLevel(21));
+            Assert.AreEqual(20, Areas.LevelInArea(40));
+
+            Assert.AreEqual(WorldState.Current, Progress.StateOfArea(0));
+            Assert.AreEqual(WorldState.Locked, Progress.StateOfArea(1));
+            Assert.IsTrue(Catalog.LoadFromJson(TestCatalog));
+            try
+            {
+                int expected = 0;
+                for (int level = 1; level <= 20; level++)
+                {
+                    int stars = level % 3 + 1;
+                    expected += stars;
+                    Progress.ReportWin(level, false, stars, 10, 1);
+                }
+                Assert.AreEqual(WorldState.Completed, Progress.StateOfArea(0));
+                Assert.AreEqual(WorldState.Current, Progress.StateOfArea(1));
+                Assert.AreEqual(WorldState.Locked, Progress.StateOfArea(2));
+                Assert.AreEqual(expected, Progress.StarsInArea(0));
+                Assert.AreEqual(expected, Progress.StarsInRange(1, 20));
+                Assert.AreEqual(20, Progress.LevelsWonInArea(0));
+                Assert.AreEqual(0, Progress.LevelsWonInArea(1));
+                Assert.AreEqual(0, Progress.StarsInArea(1));
+                int perfect = 0;
+                for (int level = 1; level <= 20; level++) if (level % 3 == 2) perfect++;
+                Assert.AreEqual(perfect, Progress.PerfectLevelsInArea(0));
+                Assert.AreEqual(perfect, Progress.PerfectLevels);
+                Assert.AreEqual(20, SaveSystem.Data.levelStars.Length);
+            }
+            finally { Catalog.Reload(); }
         }
 
         [Test]
         public void Progress_StreakBonusesAndContinues()
         {
             SaveSystem.Data.winStreak = 3;
-            Assert.AreEqual(0, Progress.StreakBonuses.Length, "Time is locked before level 6");
+            Assert.AreEqual(0, Progress.StreakBonuses.Length, "the Rainbow Potion is locked before level 10");
             Progress.SetLevel(12);
-            CollectionAssert.AreEqual(new[] { BoosterType.Crystal }, Progress.StreakBonuses);
+            CollectionAssert.AreEqual(new[] { BoosterType.Rainbow }, Progress.StreakBonuses);
             SaveSystem.Data.winStreak = 6;
-            CollectionAssert.AreEqual(new[] { BoosterType.Crystal, BoosterType.Rainbow }, Progress.StreakBonuses);
+            CollectionAssert.AreEqual(new[] { BoosterType.Rainbow }, Progress.StreakBonuses, "the Crystal Ball unlocks at 15");
+            Progress.SetLevel(16);
+            CollectionAssert.AreEqual(new[] { BoosterType.Rainbow, BoosterType.Crystal }, Progress.StreakBonuses);
             SaveSystem.Data.winStreak = 2;
             Assert.AreEqual(0, Progress.StreakBonuses.Length);
 
@@ -836,8 +1006,8 @@ namespace PotionPop.Tests
         // ============================================================== Collection
 
         const string TestCatalog =
-            "{\"areas\":[{\"id\":\"a0\",\"index\":0,\"accent\":\"#2ED6A1\",\"products\":[\"p1\",\"p2\"]}," +
-            "{\"id\":\"a1\",\"index\":1,\"accent\":\"#FF7EB6\",\"products\":[\"p3\",\"p4\"]}]}";
+            "{\"areas\":[{\"id\":\"a0\",\"index\":0,\"accent\":\"#2ED6A1\",\"cards\":[\"p1\",\"p2\"]}," +
+            "{\"id\":\"a1\",\"index\":1,\"accent\":\"#FF7EB6\",\"cards\":[\"p3\",\"p4\"]}]}";
 
         [Test]
         public void Collection_DuplicatesAndAlbums()
@@ -846,7 +1016,7 @@ namespace PotionPop.Tests
             try
             {
                 Assert.AreEqual(2, Catalog.Areas.Count);
-                Assert.AreEqual("a1", Catalog.AreaOfProduct("p4"));
+                Assert.AreEqual("a1", Catalog.AreaOfCard("p4"));
                 Assert.AreEqual("a0", Areas.AreaForLevel(1).id);
                 Assert.AreEqual("a1", Areas.AreaForLevel(21).id);
                 Assert.AreEqual("a0", Areas.AreaForLevel(41).id, "areas cycle");
@@ -856,7 +1026,7 @@ namespace PotionPop.Tests
                 for (int i = 0; i < 100 && Collection.OwnedCount("a0") < 2; i++)
                 {
                     string card = Collection.GrantRandomCard(out _);
-                    Assert.AreEqual("a0", Catalog.AreaOfProduct(card), "only unlocked areas");
+                    Assert.AreEqual("a0", Catalog.AreaOfCard(card), "only unlocked areas");
                 }
                 Assert.AreEqual(2, Collection.OwnedCount("a0"));
                 Assert.IsTrue(Collection.AlbumComplete("a0"));
@@ -870,13 +1040,13 @@ namespace PotionPop.Tests
                 Assert.AreEqual(2, Collection.TotalOwned, "duplicates are not stored");
 
                 coins = Economy.Coins;
-                int hammers = Economy.GetBooster(BoosterType.Undo);
-                int bombs = Economy.GetBooster(BoosterType.Rainbow);
+                int undos = Economy.GetBooster(BoosterType.Undo);
+                int rainbows = Economy.GetBooster(BoosterType.Rainbow);
                 var rewards = Collection.ClaimAlbum("a0");
-                Assert.AreEqual(7, rewards.Length);
+                Assert.AreEqual(1 + Economy.AllBoosters.Length, rewards.Length, "500 coins + one of each booster");
                 Assert.AreEqual(coins + 500, Economy.Coins);
-                Assert.AreEqual(hammers + 1, Economy.GetBooster(BoosterType.Undo));
-                Assert.AreEqual(bombs + 1, Economy.GetBooster(BoosterType.Rainbow));
+                Assert.AreEqual(undos + 1, Economy.GetBooster(BoosterType.Undo));
+                Assert.AreEqual(rainbows + 1, Economy.GetBooster(BoosterType.Rainbow));
                 Assert.IsTrue(Collection.AlbumClaimed("a0"));
                 Assert.AreEqual(0, Collection.ClaimAlbum("a0").Length, "album claimed once");
                 Assert.AreEqual(0, Collection.ClaimableAlbums);
@@ -909,6 +1079,45 @@ namespace PotionPop.Tests
         }
 
         [Test]
+        public void Catalog_ParsesWorldsAndCards()
+        {
+            const string json =
+                "{\"areas\":[{\"id\":\"moon\",\"index\":5,\"accent\":\"#FFA94D\",\"cards\":[\"happy_pumpkin\",\"moon_potion\",\"happy_pumpkin\",\"\"]}," +
+                "{\"id\":\"forest\",\"index\":0,\"accent\":\"2ED6A1\",\"cards\":[\"glow_mushroom\"]}," +
+                "{\"id\":\"old\",\"index\":1,\"accent\":\"nope\",\"products\":[\"cupcake\"]}]}";
+            try
+            {
+                Assert.IsTrue(Catalog.LoadFromJson(json));
+                Assert.AreEqual(3, Catalog.Areas.Count);
+                Assert.AreEqual("forest", Catalog.GetArea(0).id, "sorted by declared index");
+                Assert.AreEqual("old", Catalog.GetArea(1).id);
+                Assert.AreEqual("moon", Catalog.GetArea(2).id);
+                Assert.AreEqual(2, Catalog.GetArea("moon").index, "re-indexed 0..n-1");
+                CollectionAssert.AreEqual(new[] { "happy_pumpkin", "moon_potion" }, Catalog.GetArea("moon").cardIds, "duplicates / empty ids dropped");
+                Assert.AreEqual(0, Catalog.GetArea("old").CardCount, "the old \"products\" field is not read");
+                Assert.AreEqual(3, Catalog.CardCount);
+                Assert.AreEqual("forest", Catalog.AreaOfCard("glow_mushroom"));
+                Assert.IsNull(Catalog.AreaOfCard("cupcake"));
+                Assert.AreEqual("card_moon_potion", Catalog.CardSprite("moon_potion"));
+                Assert.AreEqual("card.moon_potion", Catalog.CardNameKey("moon_potion"));
+                var moon = Catalog.GetArea("moon");
+                Assert.AreEqual("area.moon", moon.NameKey);
+                Assert.AreEqual("home_moon", moon.HomeBackground);
+                Assert.AreEqual("gamebg_moon", moon.GameBackground);
+                Assert.AreEqual(new Color(1f, 169f / 255f, 77f / 255f), moon.accent);
+                Assert.AreEqual(new Color(46f / 255f, 214f / 255f, 161f / 255f), Catalog.GetArea("forest").accent, "accent without #");
+                Assert.AreEqual(new Color(0.482f, 0.302f, 1f), Catalog.GetArea("old").accent, "bad accent → brand purple");
+
+                // World themes cycle; numbering does not.
+                Assert.AreEqual("forest", Areas.AreaForNumber(3).id);
+                Assert.AreEqual(1, Areas.CycleOfArea(3));
+                Assert.AreEqual(0, Areas.CycleOfArea(2));
+                Assert.AreEqual("moon", Areas.AreaForLevel(60).id);
+            }
+            finally { Catalog.Reload(); }
+        }
+
+        [Test]
         public void Catalog_EmptyOrBrokenJsonDoesNotThrow()
         {
             try
@@ -936,7 +1145,8 @@ namespace PotionPop.Tests
             Assert.AreEqual("30m", Reward.InfiniteHearts(30).AmountText);
             Assert.AreEqual("1h", Reward.InfiniteHearts(60).AmountText);
             Assert.AreEqual("1h 30m", Reward.InfiniteHearts(90).AmountText);
-            Assert.AreEqual("p_cupcake", Reward.Card("cupcake").IconSprite);
+            Assert.AreEqual("card_glow_mushroom", Reward.Card("glow_mushroom").IconSprite);
+            Assert.AreEqual("card.glow_mushroom", Reward.Card("glow_mushroom").NameKey);
             Assert.AreEqual("booster.wand", Reward.Booster(BoosterType.Wand, 1).NameKey);
 
             Reward.InfiniteHearts(15).Grant();
@@ -952,11 +1162,11 @@ namespace PotionPop.Tests
                 Assert.NotNull(s1);
                 Assert.AreSame(s1, Art.Get("zz_missing_sprite_for_tests"), "placeholder is cached");
                 Assert.IsFalse(Art.Exists("zz_missing_sprite_for_tests"));
-                Assert.AreEqual(new Rect(0.06f, 0.12f, 0.88f, 0.78f), Art.CubbyInner("zz_not_listed"));
+                Assert.AreEqual(new Rect(0.06f, 0.12f, 0.88f, 0.78f), Art.InnerRect("zz_not_listed"));
 
-                Art.LoadIndexJson("{\"sprites\":[{\"name\":\"zz_test_cubby\",\"w\":100,\"h\":50,\"inner\":[0.1,0.2,0.3,0.4]}]}");
-                Assert.AreEqual(new Rect(0.1f, 0.2f, 0.3f, 0.4f), Art.CubbyInner("zz_test_cubby"));
-                Assert.AreEqual(2f, Art.Info("zz_test_cubby").Aspect);
+                Art.LoadIndexJson("{\"sprites\":[{\"name\":\"zz_test_sign\",\"w\":100,\"h\":50,\"inner\":[0.1,0.2,0.3,0.4]}]}");
+                Assert.AreEqual(new Rect(0.1f, 0.2f, 0.3f, 0.4f), Art.InnerRect("zz_test_sign"));
+                Assert.AreEqual(2f, Art.Info("zz_test_sign").Aspect);
             }
             finally { Art.ClearCache(); }
         }
@@ -1061,21 +1271,28 @@ namespace PotionPop.Tests
         }
 
         [Test]
-        public void Loc_CoreTableHasAllLanguages()
+        public void Loc_MetaTablesHaveAllLanguages()
         {
-            // Every key of core.csv must exist in en, pt and es.
-            var asset = Resources.Load<TextAsset>("Loc/core");
-            if (asset == null)
+            // Every row of the meta tables must exist in en, pt and es.
+            string[] tables = { "core", "home", "tabs", "ui", "root", "services", "worlds" };
+            int checkedTables = 0;
+            foreach (string table in tables)
             {
-                Assert.Ignore("Resources/Loc/core.csv not imported yet");
-                return;
+                var asset = Resources.Load<TextAsset>("Loc/" + table);
+                if (asset == null) continue;   // not imported yet (fresh clone before the first Unity import)
+                checkedTables++;
+                var rows = Loc.ParseCsv(asset.text);
+                CollectionAssert.AreEqual(new[] { "key", "en", "pt", "es" }, rows[0], table);
+                for (int r = 1; r < rows.Count; r++)
+                {
+                    Assert.AreEqual(4, rows[r].Count, table + " row " + r);
+                    for (int c = 0; c < 4; c++) Assert.IsNotEmpty(rows[r][c], table + ": " + rows[r][0] + " column " + c);
+                }
             }
-            var rows = Loc.ParseCsv(asset.text);
-            CollectionAssert.AreEqual(new[] { "key", "en", "pt", "es" }, rows[0]);
-            for (int r = 1; r < rows.Count; r++)
+            if (checkedTables == 0)
             {
-                Assert.AreEqual(4, rows[r].Count, "row " + r);
-                for (int c = 0; c < 4; c++) Assert.IsNotEmpty(rows[r][c], rows[r][0] + " column " + c);
+                Assert.Ignore("Resources/Loc tables not imported yet");
+                return;
             }
             foreach (QuestKind kind in Enum.GetValues(typeof(QuestKind)))
                 Assert.IsTrue(Loc.Has(new QuestView { kind = kind }.TitleKey), kind.ToString());
@@ -1084,6 +1301,69 @@ namespace PotionPop.Tests
                 Assert.IsTrue(Loc.Has(Economy.BoosterNameKey(b)), b.ToString());
                 Assert.IsTrue(Loc.Has(Economy.BoosterDescKey(b)), b + " desc");
             }
+            for (int i = 0; i < Liquids.Count; i++) Assert.IsTrue(Loc.Has(Liquids.NameKey(i)), Liquids.NameKey(i));
+            for (int i = 1; i <= UI.HomeMascot.TipCount; i++) Assert.IsTrue(Loc.Has("home.tip." + i), "home.tip." + i);
+            foreach (string key in new[] { "worlds.title", "worlds.world_number", "worlds.cycle_name", "worlds.levels_range",
+                         "worlds.reach_level", "level.goal_3stars", "level.replay_rule", "booster.crystal_not_needed" })
+                Assert.IsTrue(Loc.Has(key), key);
+            Assert.AreEqual("Undo", Loc.T("booster.undo"));
+            Loc.Language = "pt";
+            Assert.AreEqual("Desfazer", Loc.T("booster.undo"));
+            Assert.AreEqual("Garrafa Extra", Loc.T("booster.bottle"));
+            Assert.AreEqual("Poção Arco-íris", Loc.T("booster.rainbow"));
+            Loc.Language = "es";
+            Assert.AreEqual("Varita Mágica", Loc.T("booster.wand"));
+            Assert.AreEqual("Bola de Cristal", Loc.T("booster.crystal"));
+        }
+
+        // ============================================================== Profile & world names
+
+        [Test]
+        public void PlayerProfile_AvatarsAndDefault()
+        {
+            Assert.AreEqual(12, PlayerProfile.Avatars.Length);
+            CollectionAssert.AllItemsAreUnique(PlayerProfile.Avatars);
+            foreach (string magic in new[] { "luna", "owl", "dragon", "unicorn" })
+            {
+                CollectionAssert.Contains(PlayerProfile.Avatars, magic);
+                Assert.IsTrue(PlayerProfile.IsMagicAvatar(magic), magic);
+            }
+            Assert.IsFalse(PlayerProfile.IsMagicAvatar("puppy"));
+            Assert.AreEqual("luna", PlayerProfile.Avatar);
+            Assert.AreEqual("avatar_luna", PlayerProfile.AvatarSprite);
+            PlayerProfile.SetAvatar("dragon");
+            Assert.AreEqual("dragon", SaveSystem.Data.avatar);
+            PlayerProfile.SetAvatar("zebra");
+            Assert.AreEqual("dragon", SaveSystem.Data.avatar, "unknown avatars are ignored");
+            Assert.AreEqual("fox", PlayerProfile.NormalizeAvatar("avatar_fox"));
+            Assert.AreEqual("luna", PlayerProfile.NormalizeAvatar("zebra"));
+            Assert.AreEqual("luna", PlayerProfile.NormalizeAvatar(null));
+            SaveSystem.Data.avatar = "zebra";   // e.g. a save from another build
+            Assert.AreEqual("luna", PlayerProfile.Avatar);
+            Assert.AreEqual("luna", SaveSystem.FromJson("{\"level\":3,\"avatar\":\"\"}").avatar);
+        }
+
+        [Test]
+        public void WorldNames_CycleWithRomanNumerals()
+        {
+            Assert.AreEqual("II", UI.MetaUI.Roman(2));
+            Assert.AreEqual("IV", UI.MetaUI.Roman(4));
+            Assert.AreEqual("IX", UI.MetaUI.Roman(9));
+            Assert.AreEqual("XIV", UI.MetaUI.Roman(14));
+            Assert.AreEqual("MMXXVI", UI.MetaUI.Roman(2026));
+            Assert.AreEqual("0", UI.MetaUI.Roman(0));
+            Assert.IsTrue(Catalog.LoadFromJson(TestCatalog));
+            try
+            {
+                Loc.AddCsv("key,en,pt,es\narea.a0,Forest,Floresta,Bosque\narea.a1,Caves,Cavernas,Cuevas", "tests");
+                Assert.AreEqual("Forest", UI.MetaUI.WorldName(0));
+                Assert.AreEqual("Caves", UI.MetaUI.WorldName(1));
+                Assert.AreEqual("Forest II", UI.MetaUI.WorldName(2), "themes cycle with a numeral");
+                Assert.AreEqual("Caves III", UI.MetaUI.WorldName(5));
+                Loc.Language = "pt";
+                Assert.AreEqual("Floresta II", UI.MetaUI.WorldName(2));
+            }
+            finally { Catalog.Reload(); }
         }
 
         // ============================================================== NameFilter (ranking names, App Store 1.2)
@@ -1111,7 +1391,7 @@ namespace PotionPop.Tests
         {
             string[] normal =
             {
-                "Ana", "Classic", "Assis", "Mimi", "Cocada", "Pedro", "Shelf Queen", "Analu", "Pupi",
+                "Ana", "Classic", "Assis", "Luna", "Cocada", "Pedro", "Potion Queen", "Analu", "Pupi",
                 // roots hidden inside (or across) innocent words
                 "Scunthorpe", "Yamashita", "Deputado", "Computador", "Therapist", "Hitchcock", "Cassandra", "Essex", "Sexta",
                 "Zora", "Porras", "Carvalho", "Esmeralda", "Kike", "Putin", "Bo Stark", "Mer Dalva", "Ana L", "Cuscuz",

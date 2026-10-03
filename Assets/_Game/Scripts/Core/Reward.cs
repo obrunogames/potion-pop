@@ -17,7 +17,7 @@ namespace PotionPop
         public static Reward Booster(BoosterType b, int n) => new Reward { type = RewardType.Booster, booster = b, amount = n };
         public static Reward Hearts(int n) => new Reward { type = RewardType.Hearts, amount = n };
         public static Reward InfiniteHearts(int minutes) => new Reward { type = RewardType.InfiniteHeartsMinutes, amount = minutes };
-        public static Reward Card(string productId) => new Reward { type = RewardType.Card, cardId = productId, amount = 1 };
+        public static Reward Card(string cardId) => new Reward { type = RewardType.Card, cardId = cardId, amount = 1 };
         public static Reward Stars(int n) => new Reward { type = RewardType.Stars, amount = n };
 
         /// <summary>True for a default/empty reward (e.g. a failed claim).</summary>
@@ -40,7 +40,7 @@ namespace PotionPop
             }
         }
 
-        /// <summary>Sprite name for UI: icon_coin, booster_undo, icon_heart, p_&lt;card&gt;...</summary>
+        /// <summary>Sprite name for UI: icon_coin, booster_undo, icon_heart, card_&lt;id&gt;...</summary>
         public string IconSprite
         {
             get
@@ -52,7 +52,7 @@ namespace PotionPop
                     case RewardType.Hearts: return "icon_heart";
                     case RewardType.InfiniteHeartsMinutes: return "icon_heart";
                     case RewardType.Stars: return "icon_star";
-                    case RewardType.Card: return "p_" + cardId;
+                    case RewardType.Card: return Catalog.CardSprite(cardId);
                     default: return "icon_gift";
                 }
             }
@@ -76,7 +76,7 @@ namespace PotionPop
             }
         }
 
-        /// <summary>Localization key of the reward's name ("Coins", "Hammer", product name...).</summary>
+        /// <summary>Localization key of the reward's name ("Coins", "Undo", card name...).</summary>
         public string NameKey
         {
             get
@@ -88,7 +88,7 @@ namespace PotionPop
                     case RewardType.Hearts: return "reward.hearts";
                     case RewardType.InfiniteHeartsMinutes: return "reward.infinite_hearts";
                     case RewardType.Stars: return "reward.stars";
-                    case RewardType.Card: return Catalog.ProductNameKey(cardId);
+                    case RewardType.Card: return Catalog.CardNameKey(cardId);
                     default: return "reward.coins";
                 }
             }

@@ -47,7 +47,7 @@ lb.player,Player,Jogador,Jugador
 lb.weekly,Weekly contest,Torneio semanal,Torneo semanal
 lb.global,Global,Global,Global
 lb.ends_in,Ends in {0},Termina em {0},Termina en {0}
-lb.offline,Offline ranking. Sign in to see the real world ranking.,Ranking offline. Entre para ver o ranking mundial real.,Ranking sin conexión. Inicia sesión para ver el ranking mundial real.
+lb.offline,Offline ranking. Sign in to see the real world ranking.,Ranking offline. Entre para ver o ranking mundial de verdade.,Ranking sin conexión. Inicia sesión para ver el ranking mundial real.
 lb.rank_unknown,50+,50+,50+
 lb.country.br,Brazil,Brasil,Brasil
 lb.country.mx,Mexico,México,México
@@ -84,9 +84,10 @@ ads.cancel,Cancel,Cancelar,Cancelar
 ads.unavailable,No video available right now.\nPlease try again later.,Nenhum vídeo disponível agora.\nTente de novo mais tarde.,No hay videos disponibles ahora.\nInténtalo más tarde.
 ads.watch_to_end,Watch the whole video to get the reward.,Assista ao vídeo inteiro para ganhar a recompensa.,Mira el video completo para obtener la recompensa.
 ads.privacy_options,Privacy options,Opções de privacidade,Opciones de privacidad
-ads.placement.continue,Continue (+60 s),Continuar (+60 s),Continuar (+60 s)
+ads.placement.continue,Continue (+1 bottle),Continuar (+1 garrafa),Continuar (+1 botella)
 ads.placement.double_coins,Double coins,Moedas em dobro,Monedas dobles
 ads.placement.extra_heart,+1 life,+1 vida,+1 vida
 ads.placement.extra_spin,Extra spin,Giro extra,Giro extra
 ads.placement.shop_coins,Free coins,Moedas grátis,Monedas gratis
-ads.placement.unlock_shelf,Unlock the shelf,Desbloquear a prateleira,Desbloquear el estante
+ads.placement.unlock_shelf,Break the stone,Quebrar a pedra,Romper la piedra
+ads.placement.break_stone,Break the stone,Quebrar a pedra,Romper la piedra

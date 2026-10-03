@@ -7,8 +7,24 @@ namespace PotionPop
     public static class PlayerProfile
     {
         public const int MaxNameLength = 16;
-        /// <summary>Avatar ids; sprite = "avatar_" + id.</summary>
-        public static readonly string[] Avatars = { "puppy", "kitten", "bunny", "duck", "panda", "fox", "bear", "frog" };
+        /// <summary>Avatar of new players (Luna, the witch kitten mascot).</summary>
+        public const string DefaultAvatar = "luna";
+        /// <summary>Avatar ids, in picker order (the four magic ones first); sprite = "avatar_" + id.</summary>
+        public static readonly string[] Avatars =
+        {
+            "luna", "owl", "dragon", "unicorn",
+            "puppy", "kitten", "bunny", "duck", "panda", "fox", "bear", "frog",
+        };
+        /// <summary>The magical avatars (Luna and her friends) get a sparkle in the picker.</summary>
+        public static bool IsMagicAvatar(string id) => id == "luna" || id == "owl" || id == "dragon" || id == "unicorn";
+
+        /// <summary>A known avatar id ("puppy", "avatar_puppy" → "puppy"), or <see cref="DefaultAvatar"/>.</summary>
+        public static string NormalizeAvatar(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return DefaultAvatar;
+            if (id.StartsWith("avatar_", StringComparison.Ordinal)) id = id.Substring(7);
+            return Array.IndexOf(Avatars, id) >= 0 ? id : DefaultAvatar;
+        }
         public static event Action OnChanged;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -45,7 +61,7 @@ namespace PotionPop
             return true;
         }
 
-        public static string Avatar => SaveSystem.Data.avatar;
+        public static string Avatar => NormalizeAvatar(SaveSystem.Data.avatar);
         public static string AvatarSprite => "avatar_" + Avatar;
 
         public static void SetAvatar(string avatarId)

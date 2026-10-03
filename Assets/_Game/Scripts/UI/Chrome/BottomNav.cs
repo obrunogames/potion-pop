@@ -195,14 +195,16 @@ namespace PotionPop.UI
 
         // ---------------------------------------------------------------------------------------- selection
 
-        /// <summary>Highlights a tab (screens that are not tabs leave the current highlight).</summary>
+        /// <summary>Highlights a tab (the Worlds map belongs to the Home tab; other screens that are not tabs leave the
+        /// current highlight).</summary>
         public void Select(ScreenId id, bool animate)
         {
-            int index = Array.IndexOf(TabIds, id);
+            bool alias = id == ScreenId.Worlds;
+            int index = Array.IndexOf(TabIds, alias ? ScreenId.Home : id);
             if (index < 0 || _tabs == null) return;
             if (index == _selected)
             {
-                if (animate) Bounce(_tabs[index]);
+                if (animate && !alias) Bounce(_tabs[index]);
                 return;
             }
             int prev = _selected;

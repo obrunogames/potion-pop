@@ -80,6 +80,7 @@ namespace PotionPop
             SetSplashProgress(0.7f);
             _screens.Register<CollectionScreen>();
             _screens.Register<ProfileScreen>();
+            _screens.Register<WorldsScreen>();
             _screens.Register<GameScreen>();
             Chrome.Build(_screens);
             yield return null;
@@ -144,22 +145,33 @@ namespace PotionPop
             if (_splash == null) return;
             UIKit.Stretch(_splash);
 
+            // The current world's home art behind a plum veil, the logo popping in and Luna waving among bubbles.
             var area = Areas.AreaForLevel(SaveSystem.Data.level);
-            UIKit.Backdrop(_splash, area != null ? area.HomeBackground : "home_grocery");
-            var dim = UIKit.Backdrop(_splash, "ui_pixel", new Color(0.16f, 0.08f, 0.31f, 0.35f));
+            UIKit.Backdrop(_splash, area != null ? area.HomeBackground : "home_forest");
+            var dim = UIKit.Backdrop(_splash, "ui_pixel", new Color(0.16f, 0.08f, 0.31f, 0.42f));
             if (dim != null) dim.transform.parent.SetSiblingIndex(1);
+            var bubbles = AmbientFloaters.Create(_splash, 18, new Color(1f, 0.92f, 1f, 1f));
+            if (bubbles != null) bubbles.transform.SetSiblingIndex(2);
 
-            var logo = UIKit.Image(_splash, "logo", new Vector2(860, 560));
+            var glow = UIKit.NewImage(_splash, "Glow", UISprites.Glow, new Color(1f, 0.85f, 1f, 0.5f));
+            UIKit.Place(glow.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(1100, 1100), new Vector2(0, 330));
+            Tween.Scale(glow.transform, 1.08f, 1.6f, Ease.InOutSine).SetLoops(-1, true);
+            var logo = UIKit.Image(_splash, "logo", new Vector2(880, 580));
             if (logo != null)
             {
-                UIKit.Place(logo.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(860, 560), new Vector2(0, 360));
+                UIKit.Place(logo.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(880, 580), new Vector2(0, 360));
                 logo.transform.localScale = Vector3.one * 0.6f;
-                Tween.Scale(logo.transform, 1f, 0.6f, Ease.OutBack);
+                Tween.Scale(logo.transform, 1f, 0.6f, Ease.OutBack).SetOvershoot(2f).OnComplete(() =>
+                {
+                    if (logo != null) Tween.Scale(logo.transform, 1.03f, 1.2f, Ease.InOutSine).SetLoops(-1, true);
+                });
             }
             var mascot = UIKit.Image(_splash, "mascot_wave", new Vector2(520, 780));
             if (mascot != null)
             {
                 UIKit.Place(mascot.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(520, 780), new Vector2(0, -260));
+                mascot.rectTransform.localScale = Vector3.zero;
+                Tween.Scale(mascot.rectTransform, 1f, 0.5f, Ease.OutBack).SetOvershoot(2.2f).SetDelay(0.2f);
                 Tween.Move(mascot.rectTransform, new Vector2(0, -240), 1.1f, Ease.InOutSine).SetLoops(-1, true);
             }
             _splashBar = UIKit.ProgressBar(_splash, new Vector2(700, 56));

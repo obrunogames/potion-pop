@@ -8,7 +8,7 @@ namespace PotionPop.UI
     /// caller (Collection.GrantRandomCard / Progress.ReportWin): this popup only shows it.</summary>
     public class NewCardPopup : Popup
     {
-        string _productId;
+        string _cardId;
         bool _duplicate;
         Action _onClosed;
         bool _reported;
@@ -25,16 +25,16 @@ namespace PotionPop.UI
         protected override bool ShowClose => false;
         protected override Vector2 PanelSize => new Vector2(860f, 1460f);
 
-        public static void Open(string productId, bool duplicate, Action onClosed = null)
+        public static void Open(string cardId, bool duplicate, Action onClosed = null)
         {
-            if (string.IsNullOrEmpty(productId))
+            if (string.IsNullOrEmpty(cardId))
             {
                 CommonUI.SafeInvoke(onClosed);
                 return;
             }
             PopupManager.Show<NewCardPopup>(p =>
             {
-                p._productId = productId;
+                p._cardId = cardId;
                 p._duplicate = duplicate;
                 p._onClosed = onClosed;
             });
@@ -43,7 +43,7 @@ namespace PotionPop.UI
         protected override void BuildContent(RectTransform content)
         {
             Vector2 size = content.rect.size;
-            string areaId = Catalog.AreaOfProduct(_productId);
+            string areaId = Catalog.AreaOfCard(_cardId);
             var area = Catalog.GetArea(areaId);
             Color accent = DS.AreaAccent(areaId);
             _owned = Collection.OwnedCount(areaId);
@@ -68,7 +68,7 @@ namespace PotionPop.UI
             UIKit.Place(_holder, new Vector2(0.5f, 0.5f), new Vector2(cardW, cardW * CommonUI.CardAspect), Vector2.zero);
             _back = CommonUI.CardBack(_holder, cardW);
             UIKit.Place(_back, new Vector2(0.5f, 0.5f), _back.sizeDelta, Vector2.zero);
-            _front = CommonUI.CardFront(_holder, _productId, cardW);
+            _front = CommonUI.CardFront(_holder, _cardId, cardW);
             UIKit.Place(_front, new Vector2(0.5f, 0.5f), _front.sizeDelta, Vector2.zero);
             _front.gameObject.SetActive(false);
 
@@ -88,13 +88,13 @@ namespace PotionPop.UI
                 _badge.gameObject.SetActive(false);
             }
 
-            // ---- info: name, area, album progress, duplicate note (fades in after the flip)
+            // ---- info: name, world, album progress, duplicate note (fades in after the flip)
             var info = UIKit.Rect("Info", content);
             UIKit.Stretch(info, 0f, stageH + DS.Space.S, 0f, 180f);
             _info = info.gameObject.AddComponent<CanvasGroup>();
             _info.alpha = 0f;
             float y = 0f;
-            var name = UIKit.LocText(info, Catalog.ProductNameKey(_productId), TextStyle.H2, new Vector2(size.x, 84f));
+            var name = UIKit.LocText(info, Catalog.CardNameKey(_cardId), TextStyle.H2, new Vector2(size.x, 84f));
             UIKit.Place(name.rectTransform, new Vector2(0.5f, 1f), new Vector2(size.x, 84f), new Vector2(0f, -y));
             y += 92f;
             if (area != null)

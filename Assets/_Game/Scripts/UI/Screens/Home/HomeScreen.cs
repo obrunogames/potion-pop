@@ -1,8 +1,9 @@
 // ============================================================================================================
-// Home: the store facade of the current area (slow breathing zoom, drifting clouds), Mimi beside the entrance,
-// the hanging area sign with progress, side event buttons (left: Star Chest, Daily Reward, Quests; right: Lucky
-// Spin, Weekly Ranking), the big pulsing LEVEL button with the win-streak badge, and the queue of automatic
-// popups (new area, daily reward, login nudge) shown one at a time.
+// Home: the current world's backdrop (slow breathing zoom, drifting clouds), Luna the witch kitten standing in front
+// of the potion shop, the hanging world sign ("Enchanted Forest" + 7/20 bar → Worlds screen), side event buttons
+// (left: Star Chest, Daily Reward, Quests; right: Lucky Spin, Card Collection, Worlds map), the big pulsing LEVEL
+// button (purple with a skull on hard levels) with the win-streak badge, and the queue of automatic popups (new world,
+// daily reward, login nudge) shown one at a time. The current level is generated in the background while Home shows.
 // ============================================================================================================
 using PotionPop.Levels;
 using PotionPop.Services;
@@ -25,20 +26,20 @@ namespace PotionPop.UI
         const float ColumnGap = 10f;
         const float LevelButtonBottom = DS.Space.BottomNavHeight + 46f;
         static readonly Vector2 LevelButtonSize = new Vector2(620f, 176f);
-        static readonly Vector2 MimiAnchor = new Vector2(0.70f, 0.275f);   // feet, in backdrop-image space
+        static readonly Vector2 LunaAnchor = new Vector2(0.70f, 0.28f);    // feet, in backdrop-image space (the open ground)
 
         Image _backdrop;
         RectTransform _backdropHolder;
         AspectRatioFitter _backdropFit;
         string _backdropSprite;
-        RectTransform _mimiSpot;
-        HomeMascot _mimi;
+        RectTransform _lunaSpot;
+        HomeMascot _luna;
 
         RectTransform _sign, _signSwing;
-        TMP_Text _areaName;
+        TMP_Text _areaName, _worldNumber;
         ProgressBar _areaBar;
 
-        HomeSideButton _chest, _daily, _quests, _spin, _rank;
+        HomeSideButton _chest, _daily, _quests, _spin, _album, _map;
         HomeSideButton[] _sideButtons;
 
         RectTransform _levelHolder;
@@ -82,6 +83,7 @@ namespace PotionPop.UI
             DailyRewards.OnChanged += MarkDirty;
             Quests.OnChanged += MarkDirty;
             LuckySpin.OnChanged += MarkDirty;
+            Collection.OnChanged += MarkDirty;
             Economy.OnStarsChanged += OnStarsChanged;
             Loc.OnLanguageChanged += MarkDirty;
             if (_sm != null) _sm.OnSafeAreaChanged += Layout;
@@ -96,6 +98,7 @@ namespace PotionPop.UI
             DailyRewards.OnChanged -= MarkDirty;
             Quests.OnChanged -= MarkDirty;
             LuckySpin.OnChanged -= MarkDirty;
+            Collection.OnChanged -= MarkDirty;
             Economy.OnStarsChanged -= OnStarsChanged;
             Loc.OnLanguageChanged -= MarkDirty;
             if (_sm != null) _sm.OnSafeAreaChanged -= Layout;
@@ -109,18 +112,18 @@ namespace PotionPop.UI
             _backdropHolder = (RectTransform)_backdrop.transform.parent;
             _backdropFit = _backdrop.GetComponent<AspectRatioFitter>();
 
-            // Mimi stands on the sidewalk beside the entrance: placed in the image's own space so she stays there
+            // Luna stands on the path in front of the shop: placed in the image's own space so she stays there
             // whatever the aspect ratio (the envelope fit crops the image differently on every phone).
-            _mimiSpot = UIKit.Rect("MimiSpot", _backdrop.rectTransform);
-            _mimiSpot.anchorMin = _mimiSpot.anchorMax = MimiAnchor;
-            _mimiSpot.pivot = new Vector2(0.5f, 0f);
-            _mimiSpot.sizeDelta = new Vector2(10f, 10f);
-            _mimiSpot.anchoredPosition = Vector2.zero;
-            _mimi = HomeMascot.Create(_mimiSpot, MimiSize());
+            _lunaSpot = UIKit.Rect("LunaSpot", _backdrop.rectTransform);
+            _lunaSpot.anchorMin = _lunaSpot.anchorMax = LunaAnchor;
+            _lunaSpot.pivot = new Vector2(0.5f, 0f);
+            _lunaSpot.sizeDelta = new Vector2(10f, 10f);
+            _lunaSpot.anchoredPosition = Vector2.zero;
+            _luna = HomeMascot.Create(_lunaSpot, LunaSize());
 
             HomeClouds.Create(_backdropHolder, 4, 0.13f, 0.25f);
 
-            // Soft plum shade at the bottom so the LEVEL button and the nav pop over the street.
+            // Soft plum shade at the bottom so the LEVEL button and the nav pop over the ground.
             var gradient = UISprites.Get("ui_gradient_v");
             if (gradient != null)
             {
@@ -138,7 +141,7 @@ namespace PotionPop.UI
             float h = SignWidth * 372f / 768f;
             var info = Art.Info("store_sign");
             if (info != null && info.width > 0) h = SignWidth * info.height / (float)info.width;
-            _sign = UIKit.Rect("AreaSign", Root);
+            _sign = UIKit.Rect("WorldSign", Root);
             UIKit.Place(_sign, new Vector2(0.5f, 1f), new Vector2(SignWidth, h), new Vector2(0f, -(TopBar.Height - 4f)));
 
             _signSwing = UIKit.Rect("Swing", _sign);
@@ -164,7 +167,8 @@ namespace PotionPop.UI
             panel.offsetMin = new Vector2(10f, 4f);
             panel.offsetMax = new Vector2(-10f, -4f);
 
-            _areaName = UIKit.LocText(panel, "area.grocery", TextStyle.Body, new Vector2(400f, 50f));
+            _areaName = UIKit.Text(panel, "", TextStyle.Body, new Vector2(400f, 50f));
+            _areaName.name = "WorldName";
             DS.Apply(_areaName, TextStyle.Body, 46f);
             _areaName.textWrappingMode = TextWrappingModes.NoWrap;
             var nrt = _areaName.rectTransform;
@@ -172,6 +176,16 @@ namespace PotionPop.UI
             nrt.anchorMax = new Vector2(1f, 1f);
             nrt.offsetMin = new Vector2(8f, 0f);
             nrt.offsetMax = new Vector2(-8f, 2f);
+
+            // "World N" on the purple ribbon that crowns the label (art-space rect of store_sign).
+            _worldNumber = UIKit.Text(_signSwing, "", TextStyle.Badge, new Vector2(200f, 40f));
+            _worldNumber.name = "WorldNumber";
+            DS.Apply(_worldNumber, TextStyle.Badge, 30f);
+            var wrt = _worldNumber.rectTransform;
+            wrt.anchorMin = new Vector2(0.36f, 0.54f);
+            wrt.anchorMax = new Vector2(0.64f, 0.68f);
+            wrt.offsetMin = wrt.offsetMax = Vector2.zero;
+            _worldNumber.gameObject.SetActive(info != null);   // only where the ribbon art is
 
             _areaBar = UIKit.ProgressBar(panel, new Vector2(400f, 40f));
             var brt = (RectTransform)_areaBar.transform;
@@ -190,9 +204,11 @@ namespace PotionPop.UI
             _daily = HomeSideButton.Create(Root, "icon_calendar", OnDaily);
             _quests = HomeSideButton.Create(Root, "icon_quest", OnQuests);
             _spin = HomeSideButton.Create(Root, "icon_wheel", OnSpin);
-            _rank = HomeSideButton.Create(Root, "icon_trophy", OnRank);
+            _album = HomeSideButton.Create(Root, "icon_collection", OnAlbum);
+            _map = HomeSideButton.Create(Root, "icon_map", OnMap);
             _quests.SetCaptionKey("home.side.quests");
-            _sideButtons = new[] { _chest, _daily, _quests, _spin, _rank };
+            _map.SetCaptionKey("home.side.map");
+            _sideButtons = new[] { _chest, _daily, _quests, _spin, _album, _map };
         }
 
         void BuildLevelButton()
@@ -238,11 +254,12 @@ namespace PotionPop.UI
             PlaceColumn(_daily, 1, top, slot, true);
             PlaceColumn(_quests, 2, top, slot, true);
             PlaceColumn(_spin, 0, top, slot, false);
-            PlaceColumn(_rank, 1, top, slot, false);
-            if (_mimi != null)
+            PlaceColumn(_album, 1, top, slot, false);
+            PlaceColumn(_map, 2, top, slot, false);
+            if (_luna != null)
             {
-                var size = MimiSize();
-                var rt = (RectTransform)_mimi.transform;
+                var size = LunaSize();
+                var rt = (RectTransform)_luna.transform;
                 rt.sizeDelta = size;
                 var body = rt.Find("Body") as RectTransform;
                 if (body != null) body.sizeDelta = size;
@@ -257,7 +274,7 @@ namespace PotionPop.UI
             UIKit.Place(rt, new Vector2(left ? 0f : 1f, 1f), rt.sizeDelta, new Vector2(left ? x : -x, -(top + index * slot)));
         }
 
-        Vector2 MimiSize()
+        Vector2 LunaSize()
         {
             float screenH = _sm != null ? _sm.CanvasSize.y : DS.Space.ReferenceHeight;
             float h = Mathf.Clamp(screenH * 0.2f, 370f, 470f);
@@ -300,7 +317,7 @@ namespace PotionPop.UI
                 _levelHolder.localScale = Vector3.zero;
                 Tween.Scale(_levelHolder, 1f, 0.5f, Ease.OutBack).SetOvershoot(2f).SetDelay(0.22f).OnComplete(StartLevelPulse);
             }
-            if (_mimi != null) Tween.Delay(0.35f, () => { if (_mimi != null && IsVisible) _mimi.Hop(70f, false); }).SetLink(_mimi);
+            if (_luna != null) Tween.Delay(0.35f, () => { if (_luna != null && IsVisible) _luna.Hop(70f, false); }).SetLink(_luna);
         }
 
         void StartIdle()
@@ -385,9 +402,8 @@ namespace PotionPop.UI
         {
             _dirty = false;
             int level = Progress.CurrentLevel;
-            var area = Areas.AreaForLevel(level);
 
-            // Backdrop of the current area.
+            // Backdrop of the current world.
             string sprite = CurrentBackdrop();
             if (_backdrop != null && sprite != _backdropSprite)
             {
@@ -401,13 +417,10 @@ namespace PotionPop.UI
                 }
             }
 
-            // Area sign.
-            if (_areaName != null)
-            {
-                var loc = _areaName.GetComponent<LocText>();
-                string key = area != null ? area.NameKey : "area.grocery";
-                if (loc != null) loc.Set(key);
-            }
+            // World sign.
+            int worldNumber = Areas.AreaNumberForLevel(level);
+            if (_areaName != null) _areaName.text = MetaUI.WorldName(worldNumber);
+            if (_worldNumber != null) _worldNumber.text = Loc.T("worlds.world_number", worldNumber + 1);
             if (_areaBar != null)
             {
                 int inArea = Areas.LevelInArea(level);
@@ -442,7 +455,6 @@ namespace PotionPop.UI
             }
 
             RefreshSideButtons(animate);
-            RefreshRank();
         }
 
         void RefreshSideButtons(bool animate)
@@ -478,6 +490,15 @@ namespace PotionPop.UI
                 _spin.SetGlow(free);
                 if (free != _spinFast && IsVisible) StartSpinIcon(free);
             }
+            if (_album != null)
+            {
+                int claimable = Collection.ClaimableAlbums;
+                _album.SetCaption(Loc.T("quest.progress", Collection.TotalOwned, Collection.TotalCards));
+                if (claimable > 0) _album.Badge.SetText("!");
+                else _album.Badge.Hide();
+                _album.SetGlow(claimable > 0);
+            }
+            if (_map != null) _map.SetCaptionKey("home.side.map");
             RefreshTimers();
         }
 
@@ -494,25 +515,10 @@ namespace PotionPop.UI
             }
         }
 
-        void RefreshRank()
-        {
-            if (_rank == null) return;
-            var button = _rank;
-            LeaderboardService.GetWeekly(list =>
-            {
-                if (button == null) return;
-                int rank = 0;
-                if (list != null)
-                    for (int i = 0; i < list.Count; i++)
-                        if (list[i] != null && list[i].isPlayer) { rank = list[i].rank; break; }
-                button.SetCaption(Loc.T("home.rank", rank > 0 ? rank.ToString() : Loc.T("lb.rank_unknown")));
-            });
-        }
-
         static string CurrentBackdrop()
         {
             var area = Areas.AreaForLevel(Progress.CurrentLevel);
-            return area != null ? area.HomeBackground : "home_grocery";
+            return area != null ? area.HomeBackground : "home_forest";
         }
 
         // ---------------------------------------------------------------------------------------- per frame
@@ -541,7 +547,8 @@ namespace PotionPop.UI
                     float delay = 0f;
                     if (StarChest.CanOpen) { Wiggle(_chest, delay); delay += 0.15f; }
                     if (DailyRewards.CanClaim) { Wiggle(_daily, delay); delay += 0.15f; }
-                    if (Quests.ClaimableCount > 0) Wiggle(_quests, delay);
+                    if (Quests.ClaimableCount > 0) { Wiggle(_quests, delay); delay += 0.15f; }
+                    if (Collection.ClaimableAlbums > 0) Wiggle(_album, delay);
                 }
             }
 
@@ -622,11 +629,15 @@ namespace PotionPop.UI
         void OnQuests() => QuestsPopup.Open();
         void OnSpin() => LuckySpinPopup.Open();
 
-        void OnRank()
+        void OnAlbum()
         {
-            if (_sm != null) _sm.Show(ScreenId.Leaderboard);
+            if (_sm != null) _sm.Show(ScreenId.Collection);
         }
 
+        /// <summary>Map button: straight to the current world's level map.</summary>
+        void OnMap() => WorldsScreen.OpenCurrentWorld();
+
+        /// <summary>World sign: swings on its chains, then the Worlds screen opens on the list of worlds.</summary>
         void OnSignTapped()
         {
             if (_signSwing == null) return;
@@ -639,7 +650,7 @@ namespace PotionPop.UI
                 if (_signSwing == null || !IsVisible) return;
                 Tween.Rotate(_signSwing, 1.6f, 1.6f, Ease.InOutSine).SetLoops(-1, true);
             });
-            if (_mimi != null && Random.value < 0.5f) _mimi.ShowTip();
+            Tween.Delay(0.18f, () => { if (IsVisible) WorldsScreen.Open(); }).SetLink(this);
         }
     }
 }

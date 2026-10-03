@@ -1,5 +1,5 @@
 // ============================================================================================================
-// Design tokens of the "Candy Boutique" design system (Docs/DesignSystem.md): colors, typography, spacing,
+// Design tokens of the "Candy Boutique" design system of Potion Pop! (Docs/DesignSystem.md): colors, typography, spacing,
 // motion, button geometry. DS.Apply styles any TMP text with a cached material preset per TextStyle.
 // ============================================================================================================
 using TMPro;
@@ -45,12 +45,17 @@ namespace PotionPop.UI
             /// <summary>Glass surface fill (white 18%) and border (white 35%).</summary>
             public static readonly Color Glass = new Color(1f, 1f, 1f, 0.18f);
             public static readonly Color GlassBorder = new Color(1f, 1f, 1f, 0.35f);
-            /// <summary>Area accents (Docs/DesignSystem.md §1).</summary>
-            public static readonly Color AreaGrocery = Hex("2ED6A1");
-            public static readonly Color AreaSweets = Hex("FF7EB6");
-            public static readonly Color AreaToys = Hex("4FB3FF");
-            public static readonly Color AreaBeauty = Hex("A98BFF");
-            public static readonly Color AreaFresh = Hex("FFA94D");
+            /// <summary>World accents (Docs/DesignSystem.md §1). The catalog (Resources/catalog.json) is the source of
+            /// truth; these are the fallbacks when it is missing.</summary>
+            public static readonly Color WorldForest = Hex("2ED6A1");
+            public static readonly Color WorldCrystal = Hex("4FB3FF");
+            public static readonly Color WorldCandy = Hex("FF7EB6");
+            public static readonly Color WorldSky = Hex("A98BFF");
+            public static readonly Color WorldLagoon = Hex("2EC9D6");
+            public static readonly Color WorldMoon = Hex("FFA94D");
+            /// <summary>Solid gold used for 3-star rings, completed worlds and the path of won levels.</summary>
+            public static readonly Color StarGold = Hex("FFC23D");
+            public static readonly Color StarGoldDark = Hex("C98A00");
             /// <summary>Candy palette used by confetti and celebratory bursts.</summary>
             public static readonly Color[] Candy =
             {
@@ -274,18 +279,38 @@ namespace PotionPop.UI
 
         // ---------------------------------------------------------------------------------------- misc tokens
 
+        /// <summary>Accent color of a world (catalog accent; built-in fallback per world id; brand purple otherwise).</summary>
         public static Color AreaAccent(string areaId)
         {
+            if (string.IsNullOrEmpty(areaId)) return Colors.Brand;
+            AreaInfo area = null;
+            try { area = Catalog.GetArea(areaId); }
+            catch (System.Exception) { area = null; }
+            if (area != null) return area.accent;
             switch (areaId)
             {
-                case "grocery": return Colors.AreaGrocery;
-                case "sweets": return Colors.AreaSweets;
-                case "toys": return Colors.AreaToys;
-                case "beauty": return Colors.AreaBeauty;
-                case "fresh": return Colors.AreaFresh;
+                case "forest": return Colors.WorldForest;
+                case "crystal": return Colors.WorldCrystal;
+                case "candy": return Colors.WorldCandy;
+                case "sky": return Colors.WorldSky;
+                case "lagoon": return Colors.WorldLagoon;
+                case "moon": return Colors.WorldMoon;
                 default: return Colors.Brand;
             }
         }
+
+        /// <summary>Accent of the world of an (unbounded) area number.</summary>
+        public static Color AreaAccent(int areaNumber)
+        {
+            var area = Areas.AreaForNumber(areaNumber);
+            return area != null ? area.accent : Colors.Brand;
+        }
+
+        /// <summary>A darker shade of a color (for 3D lips, outlines on accents).</summary>
+        public static Color Darken(Color c, float amount = 0.35f) => Color.Lerp(c, Colors.Ink, Mathf.Clamp01(amount));
+
+        /// <summary>A lighter tint of a color.</summary>
+        public static Color Lighten(Color c, float amount = 0.4f) => Color.Lerp(c, Color.white, Mathf.Clamp01(amount));
 
         /// <summary>Flat color of a button color (used to tint the procedural fallback when btn_* art is missing).</summary>
         public static Color ButtonTint(ButtonColor c)
