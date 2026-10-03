@@ -1,98 +1,99 @@
 {
   "areas": [
     {
-      "id": "grocery",
+      "id": "forest",
       "index": 0,
       "accent": "#2ED6A1",
-      "products": [
-        "soda_orange",
-        "soda_lime",
-        "cola_bottle",
-        "water_bottle",
-        "milk_carton",
-        "juice_strawberry",
-        "ketchup",
-        "mustard",
-        "honey_jar",
-        "jam_jar",
-        "cereal_box",
-        "chips_bag"
+      "cards": [
+        "glow_mushroom",
+        "firefly_jar",
+        "wise_owl",
+        "leaf_spellbook",
+        "acorn_potion",
+        "fairy_lantern",
+        "magic_watering_can",
+        "lucky_clover",
+        "baby_dragon"
       ]
     },
     {
-      "id": "sweets",
+      "id": "crystal",
       "index": 1,
-      "accent": "#FF7EB6",
-      "products": [
-        "cupcake",
-        "donut",
-        "macarons",
-        "lollipop",
-        "gummy_jar",
-        "chocolate_bar",
-        "cookie_jar",
-        "ice_cream",
-        "croissant",
-        "cake_slice",
-        "milkshake",
-        "cotton_candy"
-      ]
-    },
-    {
-      "id": "toys",
-      "index": 2,
       "accent": "#4FB3FF",
-      "products": [
-        "teddy_bear",
-        "rubber_duck",
-        "bunny_plush",
-        "toy_rocket",
-        "robot_toy",
-        "dino_toy",
-        "toy_car",
-        "beach_ball",
-        "puzzle_cube",
-        "frog_plush",
-        "toy_train",
-        "spinning_top"
+      "cards": [
+        "amethyst_cluster",
+        "crystal_ball",
+        "geode",
+        "blue_lantern",
+        "crystal_bat",
+        "starlight_potion",
+        "rainbow_pickaxe",
+        "gem_ring",
+        "gem_crown"
       ]
     },
     {
-      "id": "beauty",
+      "id": "candy",
+      "index": 2,
+      "accent": "#FF7EB6",
+      "cards": [
+        "gingerbread_wizard",
+        "candy_wand",
+        "choco_cauldron",
+        "lollipop_potion",
+        "gummy_dragon",
+        "cupcake_castle",
+        "rainbow_macaron",
+        "honey_drops",
+        "sugar_unicorn"
+      ]
+    },
+    {
+      "id": "sky",
       "index": 3,
       "accent": "#A98BFF",
-      "products": [
-        "lipstick",
-        "nail_polish",
-        "perfume",
-        "shampoo",
-        "lotion_pump",
-        "face_cream",
-        "hand_mirror",
-        "hair_brush",
-        "toothpaste",
-        "sunscreen",
-        "makeup_compact",
-        "body_mist"
+      "cards": [
+        "flying_broom",
+        "cloud_kitten",
+        "rainbow_potion",
+        "hot_air_balloon",
+        "star_compass",
+        "brass_telescope",
+        "magic_carpet",
+        "lightning_jar",
+        "winged_hourglass"
       ]
     },
     {
-      "id": "fresh",
+      "id": "lagoon",
       "index": 4,
+      "accent": "#2EC9D6",
+      "cards": [
+        "mermaid_potion",
+        "magic_shell",
+        "pearl_clam",
+        "octopus_wizard",
+        "treasure_chest",
+        "wand_starfish",
+        "coral_crown",
+        "bubble_potion",
+        "seahorse"
+      ]
+    },
+    {
+      "id": "moon",
+      "index": 5,
       "accent": "#FFA94D",
-      "products": [
-        "apple",
-        "pineapple",
-        "avocado",
-        "banana",
-        "strawberry_basket",
-        "carrots",
-        "broccoli",
-        "eggplant",
-        "grapes",
-        "watermelon",
-        "peach",
-        "corn"
+      "cards": [
+        "happy_pumpkin",
+        "star_witch_hat",
+        "moon_potion",
+        "friendly_ghost",
+        "broom_kitten",
+        "bat_cupcake",
+        "green_cauldron",
+        "web_dreamcatcher",
+        "candle_lantern"
       ]
     }
   ]

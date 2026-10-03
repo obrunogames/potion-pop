@@ -14,6 +14,9 @@ namespace PotionPop.EditorTools
     /// * Max size 2048 for home_/gamebg_/logo*, 1024 otherwise. ASTC 6x6 on Android/iOS (backgrounds ASTC 8x8),
     ///   high-quality compression on desktop. Small procedural "ui_*" helpers (≤ 512 px) and the in-game copy of the
     ///   app icon stay uncompressed (smooth gradients, crisp 9-slice edges).
+    /// * Procedural bottle glass (bottle_back/front/glow/mask/shadow, drawn by process_art.py from bottle_shape.json):
+    ///   ASTC 4x4 on mobile (faint alpha gradients and 2-3 px highlights band with 6x6) and a FullRect mesh, so the
+    ///   stacked layers keep identical quads and no faint glow/shadow pixel is cut by a tight outline.
     /// * Assets/_Game/Art/**/app_icon.png (PlayerSettings icon source): Default texture type, uncompressed.
     /// When art_index.json changes, only the sprites whose border/pivot changed are reimported.
     /// </summary>
@@ -25,7 +28,7 @@ namespace PotionPop.EditorTools
         const int LargeMaxSize = 2048, DefaultMaxSize = 1024, UncompressedHelperMaxSize = 512;
 
         // Bump when the rules below change: Unity then reimports every texture handled here.
-        public override uint GetVersion() => 2;
+        public override uint GetVersion() => 3;
 
         public static bool IsArtTexture(string path)
         {
@@ -56,7 +59,11 @@ namespace PotionPop.EditorTools
         // ------------------------------------------------------------------ rules
 
         static bool IsBackground(string name) => name.StartsWith("home_", StringComparison.Ordinal) || name.StartsWith("gamebg_", StringComparison.Ordinal);
-        static bool IsLarge(string name) => IsBackground(name) || name.StartsWith("logo", StringComparison.Ordinal) || name == "fx_ice_frame";
+        static bool IsLarge(string name) => IsBackground(name) || name.StartsWith("logo", StringComparison.Ordinal);
+
+        /// <summary>Procedural glass sprites of the potion bottle (one shared canvas, see bottle_shape.json).</summary>
+        public static bool IsBottleGlass(string name) =>
+            name == "bottle_back" || name == "bottle_front" || name == "bottle_glow" || name == "bottle_mask" || name == "bottle_shadow";
 
         static void Apply(TextureImporter importer, string name, int width, int height, ArtIndex.SpriteMeta meta, bool appIconSource)
         {
@@ -103,7 +110,9 @@ namespace PotionPop.EditorTools
             }
 
             importer.textureCompression = TextureImporterCompression.CompressedHQ;
-            var mobile = IsBackground(name) ? TextureImporterFormat.ASTC_8x8 : TextureImporterFormat.ASTC_6x6;
+            var mobile = IsBackground(name) ? TextureImporterFormat.ASTC_8x8
+                       : IsBottleGlass(name) ? TextureImporterFormat.ASTC_4x4
+                       : TextureImporterFormat.ASTC_6x6;
             SetOverride(importer, "Android", maxSize, mobile);
             SetOverride(importer, "iPhone", maxSize, mobile);
             SetOverride(importer, "Standalone", maxSize, TextureImporterFormat.Automatic);
@@ -179,7 +188,7 @@ namespace PotionPop.EditorTools
                 }
             }
             bool sliced = layout.border != Vector4.zero;
-            layout.mesh = sliced || IsBackground(name) ? SpriteMeshType.FullRect : SpriteMeshType.Tight;
+            layout.mesh = sliced || IsBackground(name) || IsBottleGlass(name) ? SpriteMeshType.FullRect : SpriteMeshType.Tight;
             return layout;
         }
 
