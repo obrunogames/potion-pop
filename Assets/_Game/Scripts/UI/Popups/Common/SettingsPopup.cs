@@ -287,7 +287,7 @@ namespace PotionPop.UI
             bool privacyOptions = AdsService.PrivacyOptionsRequired;
             bool designSystem = Application.isEditor || Debug.isDebugBuild;
             float bh = 116f;
-            int rows = 1 + (privacyOptions ? 1 : 0) + (designSystem ? 1 : 0);
+            int rows = 2 + (privacyOptions ? 1 : 0) + (designSystem ? 1 : 0);
             var block = UIKit.Rect("Legal", _list);
             block.sizeDelta = new Vector2(_w, rows * bh + (rows - 1) * DS.Space.S);
             float bw = (_w - DS.Space.S) * 0.5f;
@@ -301,6 +301,10 @@ namespace PotionPop.UI
             UIKit.Place((RectTransform)terms.transform, new Vector2(1f, 1f), new Vector2(bw, bh), Vector2.zero);
 
             float y = bh + DS.Space.S;
+            var support = UIKit.ButtonLoc(block, "tabs.settings.support", ButtonColor.Green, new Vector2(_w, bh),
+                () => OpenUrl(cfg != null ? cfg.supportUrl : null), "icon_info");
+            UIKit.Place((RectTransform)support.transform, new Vector2(0.5f, 1f), new Vector2(_w, bh), new Vector2(0f, -y));
+            y += bh + DS.Space.S;
             if (privacyOptions)
             {
                 var opts = UIKit.ButtonLoc(block, "ads.privacy_options", ButtonColor.Purple, new Vector2(_w, bh),
