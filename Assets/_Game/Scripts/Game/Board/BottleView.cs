@@ -8,12 +8,13 @@
 //      └ Visual   secondary motion: squash/bounce, "no" wobble, shake, hint pulse
 //         ├ Glow     selection / hint halo (bottle_glow, or a soft radial glow)
 //         ├ Back     glass back (bottle_back, or GlassGraphic)
+//         ├ Cork     pops into the neck when the bottle is completed: drawn under the liquid and the front glass, so
+//         │          only its top sticks out of the mouth (the brim-full liquid and the lip hide the part inside)
 //         ├ Liquid   LiquidGraphic (layers with a horizontal surface)
 //         ├ Marks    "?" glyphs of hidden units (TMP, kept upright, following their layer)
 //         ├ InnerFx  bubbles / splash inside the glass
 //         ├ Stream   incoming pour stream (StreamGraphic)
 //         ├ Front    glass front (bottle_front, or GlassGraphic)
-//         ├ Cork     pops in when the bottle is completed
 //         └ Stone    stone wrap + counter badge + AD badge (built on demand)
 // Missing sprites never show the magenta placeholder: every piece has a procedural/design-system fallback.
 // ============================================================================================================
@@ -34,6 +35,8 @@ namespace PotionPop.Game.Board
         public const float LiftFraction = 0.12f;
         const float LiftScale = 1.04f;
         const float StreamWidthUnits = 0.15f;
+        /// <summary>Share of the cork's height above the mouth; the rest is inside the neck.</summary>
+        const float CorkOutside = 0.45f;
 
         static readonly Color GlowSelect = new Color(1f, 0.87f, 0.4f, 1f);
         static readonly Color GlowHint = new Color(1f, 1f, 1f, 1f);
@@ -183,6 +186,19 @@ namespace PotionPop.Game.Board
                 ? (Graphic)NewImage("Back", visual, BottleArt.Back, Color.white, frameSize, framePivot, Vector2.zero)
                 : GlassFallback("Back", false);
 
+            // cork: about as wide as the neck glass, pushed into the neck so only its top (CorkOutside) shows above
+            // the mouth; created before the liquid and the front glass, which cover the part inside the neck
+            var corkSprite = BottleArt.Cork;
+            float corkW = (shape.NeckHalf + shape.glass) * 2f * 0.98f * u;
+            float corkH = corkW / Mathf.Clamp(BottleArt.Aspect("cork", 0.86f), 0.4f, 2f);
+            if (corkSprite == null) corkH = corkW * 0.8f;
+            _corkHome = new Vector2(0f, shape.MouthY * u - corkH * (1f - CorkOutside));
+            _corkColor = corkSprite != null ? Color.white : CorkTint;
+            cork = NewImage("Cork", visual, corkSprite != null ? corkSprite : UISprites.Rounded, _corkColor,
+                new Vector2(corkW, corkH), new Vector2(0.5f, 0f), _corkHome);
+            if (corkSprite == null) Sliced(cork, 1.6f);
+            cork.gameObject.SetActive(false);
+
             var lrt = Child("Liquid", visual);
             lrt.pivot = new Vector2(0.5f, 0f);
             lrt.sizeDelta = new Vector2(shape.innerWidth * u, shape.MouthY * u);
@@ -198,17 +214,6 @@ namespace PotionPop.Game.Board
                 ? (Graphic)NewImage("Front", visual, BottleArt.Front, Color.white, frameSize, framePivot, Vector2.zero)
                 : GlassFallback("Front", true);
 
-            // cork: as wide as the neck glass (the lip ends stay visible on both sides), its lower part sits in the neck
-            var corkSprite = BottleArt.Cork;
-            float corkW = (shape.NeckHalf + shape.glass) * 2f * 0.98f * u;
-            float corkH = corkW / Mathf.Clamp(BottleArt.Aspect("cork", 0.86f), 0.4f, 2f);
-            if (corkSprite == null) corkH = corkW * 0.8f;
-            _corkHome = new Vector2(0f, (shape.MouthY - 0.3f) * u);
-            _corkColor = corkSprite != null ? Color.white : CorkTint;
-            cork = NewImage("Cork", visual, corkSprite != null ? corkSprite : UISprites.Rounded, _corkColor,
-                new Vector2(corkW, corkH), new Vector2(0.5f, 0f), _corkHome);
-            if (corkSprite == null) Sliced(cork, 1.6f);
-            cork.gameObject.SetActive(false);
         }
 
         Graphic GlassFallback(string name, bool isFront)
@@ -468,7 +473,8 @@ namespace PotionPop.Game.Board
 
         // ------------------------------------------------------------------------------------------- cork
 
-        /// <summary>Cork drops into the neck with a squash, sparkles, a star burst and a bottle bounce.</summary>
+        /// <summary>Cork drops in and slides into the neck (behind the liquid and the glass) with a squash, sparkles, a
+        /// star burst and a bottle bounce.</summary>
         public void PopCork(Action onImpact)
         {
             corked = true;
@@ -490,7 +496,7 @@ namespace PotionPop.Game.Board
                     if (rt != null) Tween.Scale(rt, Vector3.one, 0.32f, Ease.OutBack).SetOvershoot(2.4f);
                 });
                 Bounce(1f);
-                Vector2 p = FxPos(visual.TransformPoint(_corkHome + new Vector2(0f, 0.2f * UnitPx)));
+                Vector2 p = FxPos(visual.TransformPoint(new Vector2(0f, (shape.MouthY + 0.15f) * UnitPx)));
                 float s = FxScale;
                 FX.Sparkles(_fxSpace, p, 8);
                 FX.Burst(_fxSpace, p, "ui_star_small", 9, StarColors, 520f * s, 0.65f, 34f * s, -1100f);

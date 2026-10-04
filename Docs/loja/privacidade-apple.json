@@ -1,0 +1,93 @@
+{
+  "_sobre": "Respostas da Privacidade do app (App Store Connect > App > Privacidade do app). A API pública não preenche este formulário: entre pelo site (ou navegador automatizado) com estas respostas. 'category', 'purposes' e 'data_protections' usam os identificadores do App Store Connect (mesmo formato do app_privacy_details.json do fastlane). Fontes: Assets/_Game/Scripts/Services (Auth, Cloud, Leaderboard, Ads), firebase/firestore.rules e a política em https://brunogames.com.br/jogos/potion-pop/privacidade (vigente desde 03/10/2026). Manter igual a Docs/loja/seguranca-dos-dados.csv (Play).",
+  "privacyPolicyUrl": "https://brunogames.com.br/jogos/potion-pop/privacidade",
+  "collectsData": true,
+  "tracking": false,
+  "trackingNote": "Sem rastreamento: o jogo não chama ATTrackingManager e o AdMob não recebe o IDFA (fica zerado sem a permissão). Só vale enquanto a mensagem de IDFA (explicação do ATT) NÃO estiver publicada em AdMob > Privacidade e mensagens: se for publicada, o UMP mostra o pedido do ATT e então 'ID do dispositivo' e 'Dados de publicidade' passam a 'usados para rastrear' (DATA_USED_TO_TRACK_YOU). O Info.plist hoje declara NSUserTrackingUsageDescription mesmo sem pedido: ver Docs/loja/lojas.md.",
+  "dataTypes": [
+    {
+      "category": "NAME",
+      "label": "Informações de contato > Nome",
+      "purposes": ["APP_FUNCTIONALITY"],
+      "data_protections": ["DATA_LINKED_TO_YOU"],
+      "source": "Firebase Authentication: nome da conta Google ou Apple, só se o jogador entrar (opcional). A Apple só envia o nome no primeiro login."
+    },
+    {
+      "category": "EMAIL_ADDRESS",
+      "label": "Informações de contato > E-mail",
+      "purposes": ["APP_FUNCTIONALITY"],
+      "data_protections": ["DATA_LINKED_TO_YOU"],
+      "source": "Firebase Authentication: e-mail da conta Google ou Apple (ou o endereço de encaminhamento da Apple), só com login. Não vai para o Firestore nem para o ranking."
+    },
+    {
+      "category": "USER_ID",
+      "label": "Identificadores > ID do usuário",
+      "purposes": ["APP_FUNCTIONALITY"],
+      "data_protections": ["DATA_LINKED_TO_YOU"],
+      "source": "uid do Firebase (chave de players/{uid} e leaderboard/{uid}), só com login."
+    },
+    {
+      "category": "GAMEPLAY_CONTENT",
+      "label": "Conteúdo do usuário > Conteúdo de jogo",
+      "purposes": ["APP_FUNCTIONALITY"],
+      "data_protections": ["DATA_LINKED_TO_YOU"],
+      "source": "Cloud Firestore, só com login: salvamento completo (privado, players/{uid}) e a linha pública do ranking global (leaderboard/{uid}: nome de jogador escolhido, avatar, estrelas e fase, visíveis a outros jogadores conectados)."
+    },
+    {
+      "category": "DEVICE_ID",
+      "label": "Identificadores > ID do dispositivo",
+      "purposes": ["THIRD_PARTY_ADVERTISING", "ANALYTICS"],
+      "data_protections": ["DATA_NOT_LINKED_TO_YOU"],
+      "source": "Google Mobile Ads SDK (AdMob): IDFV e identificadores do SDK; IDFA só com a permissão do ATT, que o jogo não pede."
+    },
+    {
+      "category": "PRODUCT_INTERACTION",
+      "label": "Dados de uso > Interação com o produto",
+      "purposes": ["THIRD_PARTY_ADVERTISING", "ANALYTICS"],
+      "data_protections": ["DATA_NOT_LINKED_TO_YOU"],
+      "source": "AdMob: aberturas do app, toques e visualizações de anúncios."
+    },
+    {
+      "category": "ADVERTISING_DATA",
+      "label": "Dados de uso > Dados de publicidade",
+      "purposes": ["THIRD_PARTY_ADVERTISING", "ANALYTICS"],
+      "data_protections": ["DATA_NOT_LINKED_TO_YOU"],
+      "source": "AdMob: anúncios exibidos, assistidos até o fim ou tocados."
+    },
+    {
+      "category": "CRASH_DATA",
+      "label": "Diagnóstico > Dados de falhas",
+      "purposes": ["THIRD_PARTY_ADVERTISING", "ANALYTICS"],
+      "data_protections": ["DATA_NOT_LINKED_TO_YOU"],
+      "source": "AdMob: falhas do SDK."
+    },
+    {
+      "category": "PERFORMANCE_DATA",
+      "label": "Diagnóstico > Dados de desempenho",
+      "purposes": ["THIRD_PARTY_ADVERTISING", "ANALYTICS"],
+      "data_protections": ["DATA_NOT_LINKED_TO_YOU"],
+      "source": "AdMob: latência e tempo de carregamento dos anúncios."
+    },
+    {
+      "category": "OTHER_DIAGNOSTIC_DATA",
+      "label": "Diagnóstico > Outros dados de diagnóstico",
+      "purposes": ["THIRD_PARTY_ADVERTISING", "ANALYTICS"],
+      "data_protections": ["DATA_NOT_LINKED_TO_YOU"],
+      "source": "AdMob: modelo, sistema e versão, idioma."
+    },
+    {
+      "category": "COARSE_LOCATION",
+      "label": "Localização > Localização aproximada",
+      "purposes": ["THIRD_PARTY_ADVERTISING", "ANALYTICS"],
+      "data_protections": ["DATA_NOT_LINKED_TO_YOU"],
+      "source": "AdMob: região estimada pelo endereço IP. O jogo não pede localização."
+    }
+  ],
+  "notCollected": [
+    "Localização exata, contatos, fotos ou vídeos, áudio, arquivos, agenda, saúde, condicionamento físico",
+    "Telefone, endereço físico, informações financeiras e de pagamento, histórico de compras (sem compras no app)",
+    "Histórico de navegação e de pesquisa, informações sensíveis, mensagens (sem chat)",
+    "Suporte ao cliente: o contato é por e-mail ou pelo formulário do site, fora do app",
+    "Nenhum SDK de estatística (analytics); sem login, nenhum dado das partidas sai do aparelho"
+  ]
+}

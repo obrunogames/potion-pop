@@ -32,14 +32,14 @@
 - **Firebase** `potion-pop-game` configurado pela CLI (Firestore + regras, login Google, apps Android/iOS com SHA-1/256,
   chave de upload Android em `Keystore/`, fora do git). Detalhes: `Docs/Firebase-Setup.md`.
 
+## Lojas (04/10/2026)
+- **Enviado para revisão no Google Play e na App Store** (1.0.0, build 1), lançamento automático depois da
+  aprovação; TestFlight interno com o dono. Ids, estado e o que falta: `Docs/loja/lojas.md`.
+
 ## Pendente (manual / próximos passos)
-1. **Login com a Apple**: ativar no Apple Developer + console do Firebase (Services ID e chave para revogação).
-2. **AdMob**: criar os apps e blocos (Android/iOS) e trocar os IDs de teste em `ServicesConfig.asset`
-   (o build de release recusa IDs de teste).
-3. **Lojas**: criar os apps (App Store Connect / Play Console), fichas, capturas e a página/política de privacidade em
-   brunogames.com.br/jogos/potion-pop (o mesmo fluxo do Shelf Pop: `../shelf-sorting/Docs/loja/lojas.md`). Depois de
-   criar o app no Play, cadastrar o SHA-1 da Assinatura de apps do Play no Firebase.
-4. **Nome**: "Potion Pop!" é provisório — trocar em `PotionPopBuilder.Player.cs` (ProductName), textos e logo
-   (`Tools/art_manifest.py` → `logo`) se quiser outro.
-5. Revisar o equilíbrio de dificuldade/estrelas jogando de verdade (limites em `LevelGenerator.Finish` e curva em
+1. Acompanhar a revisão das lojas; depois: AdMob › Adicionar loja e links das lojas no site (`Docs/loja/lojas.md`).
+2. **Login com a Apple**: o provedor está ligado no Firebase; falta a seção de revogação (Services ID + chave), ver
+   `Docs/Firebase-Setup.md` 7.1.
+3. **Nome**: "Potion Pop!" está nas lojas; trocar exigiria nova ficha e nova versão.
+4. Revisar o equilíbrio de dificuldade/estrelas jogando de verdade (limites em `LevelGenerator.Finish` e curva em
    `Difficulty.For`).
