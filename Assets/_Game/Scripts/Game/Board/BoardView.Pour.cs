@@ -4,8 +4,9 @@
 //   [uncork]  undo of a completion only: the cork pops off the bottle that gives the liquid back (0.3 s)
 //   fly       the source travels on an arc from its current pose (lifted or resting) so that its lip lands just
 //             above the target's mouth, tilting to the angle where its liquid reaches the lip
-//             (BottleShape.PourAngleDeg of its current volume) and pouring TOWARD the target (side chosen from the
-//             positions, flipped when the tilted bottle would leave the board)
+//             (BottleShape.PourAngleDeg of its current volume, at least MinTiltDeg since full bottles are brim-full)
+//             and pouring TOWARD the target (side chosen from the positions, flipped when the tilted bottle would
+//             leave the board)
 //   drain     the stream falls (head reaches the surface in 0.07 s), the source drains while the target fills
 //             (a lag of 0.07 s), the source keeps tilting further as it empties (angle re-solved every frame from
 //             the remaining volume while the lip stays above the target's mouth), splash + bubbles at the landing
@@ -133,6 +134,9 @@ namespace PotionPop.Game.Board
             const float ReturnTime = 0.32f;
             const float PourGapUnits = 0.42f; // lip height above the target's mouth (shape units): clears its shoulders
             const float PourOffsetUnits = 0.1f;  // toward the source side (the stream still lands well inside the neck)
+            // A brim-full bottle reaches its lip at 0°: never pour from (nearly) upright, the body would hang over the
+            // target. Below the physical angle the liquid simply rests against the mouth until the drain takes it.
+            const float MinTiltDeg = 60f;
 
             readonly int _src, _dst, _color, _amount;
             public int hiddenPoured;
@@ -267,7 +271,10 @@ namespace PotionPop.Game.Board
                 _s.SetShadow(0.25f, 0.7f, 0.2f);
             }
 
-            float StartAngle() => _side * (_shape.PourAngleDeg(_v0) + 1.5f);
+            /// <summary>Tilt (signed by side) that brings <paramref name="volume"/> to the lip, at least <see cref="MinTiltDeg"/>.</summary>
+            float TiltFor(float volume) => _side * Mathf.Max(MinTiltDeg, _shape.PourAngleDeg(volume) + 1.5f);
+
+            float StartAngle() => TiltFor(_v0);
 
             /// <summary>World point the source's lip hovers at: just above the target's mouth, slightly to the source side.</summary>
             Vector3 PourPoint()
@@ -397,9 +404,7 @@ namespace PotionPop.Game.Board
 
             void Hold()
             {
-                float v = _s.liquid.TotalAmount * _s.liquid.UnitVolume;
-                float angle = _side * (_shape.PourAngleDeg(v) + 1.5f);
-                SetPose(PourPoint(), angle, 1f);
+                SetPose(PourPoint(), TiltFor(_s.liquid.TotalAmount * _s.liquid.UnitVolume), 1f);
             }
 
             void Return(float p)
