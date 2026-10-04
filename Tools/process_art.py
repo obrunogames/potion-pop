@@ -675,7 +675,7 @@ class BottleShape:
             problems.append("neckWidth must be in (0, innerWidth)")
         if min(self.sh, self.neck, self.lip_h, self.glass) <= 0:
             problems.append("shoulderHeight, neckHeight, lipHeight and glass must be > 0")
-        if not 0 < self.fill <= self.mouth:
+        if not 0 < self.fill <= self.mouth + 1e-6:
             problems.append("fillHeight must be in (0, mouth]")
         if problems:
             raise SystemExit("bottle_shape.json: " + "; ".join(problems))
@@ -1120,15 +1120,40 @@ def tint(im, rgb, alpha=1.0):
     return to_image(arr)
 
 
+def poly_area(poly):
+    """Shoelace area of a polygon given as (x, y) points."""
+    a = 0.0
+    for (x0, y0), (x1, y1) in zip(poly, poly[1:] + poly[:1]):
+        a += x0 * y1 - x1 * y0
+    return abs(a) * 0.5
+
+
+def unit_levels(shape):
+    """Upright surface heights [0, after 1 unit, ..., after capacity units]: every unit has the same VOLUME, like the
+    game (BottleShape.LevelForVolume), so the bands in the rounded bottom and in the shoulders/neck are taller."""
+    full = poly_area(shape.band_polygon(0.0, shape.fill))
+    levels = [0.0]
+    for k in range(1, shape.capacity + 1):
+        lo, hi = levels[-1], shape.fill
+        for _ in range(48):
+            mid = (lo + hi) / 2
+            if poly_area(shape.band_polygon(0.0, mid)) < full * k / shape.capacity:
+                lo = mid
+            else:
+                hi = mid
+        levels.append((lo + hi) / 2)
+    return levels
+
+
 def liquid_layer(shape, layout, units, scale_ss=SS):
     """Flat liquid bands (bottom to top, one color per unit) on the bottle canvas, rasterized from band_polygon()
     -- the polygon the game meshes -- with SS x SS antialiasing."""
     W, H, ox, oy, ppu = layout["width"], layout["height"], layout["originX"], layout["originY"], shape.ppu
-    unit_h = shape.fill / shape.capacity
+    levels = unit_levels(shape)
     big = Image.new("RGBA", (W * scale_ss, H * scale_ss), (0, 0, 0, 0))
     d = ImageDraw.Draw(big)
     for k, color in enumerate(units):
-        poly = shape.band_polygon(k * unit_h, (k + 1) * unit_h)
+        poly = shape.band_polygon(levels[k], levels[k + 1])
         pts = [((ox + x * ppu) * scale_ss, (H - (oy + y * ppu)) * scale_ss) for x, y in poly]
         d.polygon(pts, fill=LIQUID_PREVIEW[color] + (255,))
     return big.resize((W, H), Image.BOX)
@@ -1231,9 +1256,8 @@ def bottle_preview(shape, layout, art, path):
     outline = shape.band_polygon(0.0, shape.mouth)
     pts = [((ox + x * ppu) * z, (H - (oy + y * ppu)) * z) for x, y in outline]
     d.line(pts + [pts[0]], fill=(255, 0, 255, 255), width=1)
-    unit_h = shape.fill / shape.capacity
-    for k in range(shape.capacity + 1):
-        yy = (H - (oy + k * unit_h * ppu)) * z
+    for level in unit_levels(shape):
+        yy = (H - (oy + level * ppu)) * z
         d.line(((ox - shape.hw * ppu) * z - 8, yy, (ox - shape.hw * ppu) * z - 2, yy), fill=(255, 0, 255, 255), width=1)
     cx0 = (ox - (shape.hw + shape.glass) * ppu - 14) * z
     cx1 = (ox + (shape.hw + shape.glass) * ppu + 14) * z

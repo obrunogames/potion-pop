@@ -166,8 +166,9 @@ current level (0.8 s OutCubic); dragging cancels any auto-scroll.
 ## 7. Bottles & liquids (board, `Scripts/Game/Board`)
 
 Glass and liquid share one parametric silhouette (`Resources/bottle_shape.json`: inner width 1, body 2.62, shoulder,
-neck 0.56, lip 0.82, glass 0.075, fill height 2.48 for 4 units); `Tools/process_art.py` draws the glass sprites from
-it, the game builds the liquid mesh from it, so they always line up.
+neck 0.56, lip 0.82, glass 0.075, fill height 3.22 = the mouth for 4 units); `Tools/process_art.py` draws the glass
+sprites from it, the game builds the liquid mesh from it, so they always line up. A full bottle is brim-full: every unit
+has the same volume, so the top one fills the shoulders and the neck up to the lip (and the pour tilts at least 60°).
 
 * **Layer stack** (per bottle): contact `bottle_shadow` → selection/hint `bottle_glow` (tinted) → `bottle_back`
   (faint cool interior, back-wall highlight) → liquid mesh → "?" marks → inner FX (bubbles, splash) → pour stream →

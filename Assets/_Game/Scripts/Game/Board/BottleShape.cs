@@ -32,8 +32,9 @@ namespace PotionPop.Game.Board
         public float lipWidth = 0.82f;
         public float lipHeight = 0.15f;
         public float glass = 0.075f;
-        /// <summary>Liquid height when the bottle holds <see cref="capacity"/> units upright.</summary>
-        public float fillHeight = 2.48f;
+        /// <summary>Liquid height when the bottle holds <see cref="capacity"/> units upright: the mouth, so a full bottle
+        /// is brim-full (the top unit fills the shoulders and the neck up to the lip).</summary>
+        public float fillHeight = 3.22f;
         public int capacity = 4;
 
         /// <summary>Largest tilt the pour solver considers (degrees).</summary>
@@ -204,7 +205,7 @@ namespace PotionPop.Game.Board
             lipWidth = Mathf.Max(neckWidth, Finite(lipWidth, 0.82f));
             lipHeight = Mathf.Max(0f, Finite(lipHeight, 0.15f));
             glass = Mathf.Clamp(Finite(glass, 0.075f), 0f, 0.5f);
-            fillHeight = Mathf.Clamp(Positive(fillHeight, 2.48f), 0.1f, bodyHeight + shoulderHeight + neckHeight);
+            fillHeight = Mathf.Clamp(Positive(fillHeight, 3.22f), 0.1f, bodyHeight + shoulderHeight + neckHeight);
             if (capacity <= 0) capacity = 4;
         }
 

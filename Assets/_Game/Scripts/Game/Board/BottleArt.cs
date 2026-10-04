@@ -126,7 +126,7 @@ namespace PotionPop.Game.Board
             public float lipWidth = 0.82f;
             public float lipHeight = 0.15f;
             public float glass = 0.075f;
-            public float fillHeight = 2.48f;
+            public float fillHeight = 3.22f;
             public int capacity = 4;
             public SpriteJson sprite;
         }

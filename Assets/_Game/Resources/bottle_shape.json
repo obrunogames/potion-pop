@@ -9,7 +9,7 @@
   "lipWidth": 0.82,
   "lipHeight": 0.15,
   "glass": 0.075,
-  "fillHeight": 2.48,
+  "fillHeight": 3.22,
   "capacity": 4,
   "sprite": {
     "about": "Written by Tools/process_art.py. bottle_back, bottle_front, bottle_glow and bottle_mask share ONE canvas of width x height pixels; the shape origin (0,0) = inner bottom on the axis is at pixel (originX, originY) from the canvas BOTTOM-LEFT, and 1 shape unit = pixelsPerUnit pixels. Stack order: shadow, glow (selection, tinted), back, liquid mesh, front. bottle_shadow has its own canvas (shadowWidth x shadowHeight at the same pixels per unit) whose center goes at pixel (shadowCenterX, shadowCenterY) of the main canvas (= shape point (0, -glass), the outer bottom of the glass; it may lie below the canvas).",
