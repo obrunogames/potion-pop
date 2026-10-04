@@ -17,13 +17,13 @@ MonoBehaviour:
   googleWebClientId: 975002712260-fn44ai5c45g2u42l1n7kbohk3soaapu8.apps.googleusercontent.com
   googleIosClientId: 975002712260-50t6snes3rosvrqf6lj6csb1pnupfr3j.apps.googleusercontent.com
   admobAndroidAppId: ca-app-pub-9343332708932715~4164007604
-  admobIosAppId: ca-app-pub-3940256099942544~1458002511
+  admobIosAppId: ca-app-pub-9343332708932715~9176746859
   bannerAndroid: ca-app-pub-9343332708932715/3141821543
   interstitialAndroid: ca-app-pub-9343332708932715/1742867558
   rewardedAndroid: ca-app-pub-9343332708932715/5142047359
-  bannerIos: ca-app-pub-3940256099942544/2435281174
-  interstitialIos: ca-app-pub-3940256099942544/4411468910
-  rewardedIos: ca-app-pub-3940256099942544/1712485313
+  bannerIos: ca-app-pub-9343332708932715/5809095910
+  interstitialIos: ca-app-pub-9343332708932715/9304739360
+  rewardedIos: ca-app-pub-9343332708932715/6652413458
   simulatedAdsInEditor: 0
   privacyPolicyUrl: https://brunogames.com.br/jogos/potion-pop/privacidade
   termsUrl: https://brunogames.com.br/termos

@@ -349,7 +349,8 @@ namespace PotionPop.Game.Board
                     Tween.Kill(img);
                     Tween.Scale(rt, 0.2f, 0.25f, Ease.InBack);
                     Tween.Fade(img, 0f, 0.25f).OnComplete(() => { if (img != null) img.gameObject.SetActive(false); });
-                    Vector2 p = board.FxLocal(rt.position);
+                    // the cork's pivot is deep in the neck: sparkle where its top sticks out of the mouth
+                    Vector2 p = board.FxLocal(rt.TransformPoint(new Vector3(0f, rt.rect.height * 0.8f, 0f)));
                     FX.Burst(board._fx, p, "fx_sparkle", 4, SparkleWhite, 140f * v.FxScale, 0.45f, 32f * v.FxScale, 0f);
                 }
             }
