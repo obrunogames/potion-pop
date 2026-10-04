@@ -11,8 +11,10 @@
 - **Tela de Mundos** (grupos de fases): 6 mundos de 20 fases com arte própria, estrelas por mundo, mapa de fases com
   caminho, estrelas de cada fase, rejogar fases já vencidas (só as estrelas novas dão moedas).
 - **Fases infinitas** geradas e **verificadas como solucionáveis** (solucionador A* com heurística admissível):
-  fases 1–400 válidas (a solução encontrada é reproduzida até a vitória), mediana 5 ms, p90 ~105 ms, máx. ~360 ms no
-  desktop; a próxima fase é gerada em segundo plano. Veredito "sem saída" do solucionador conferido contra busca
+  fases 1–1000 válidas e amostras até a fase 300.000 (a solução encontrada é reproduzida até a vitória), mediana
+  ~7 ms, p90 ~105 ms, máx. ~360 ms no desktop; a próxima fase é gerada em segundo plano. Depois da fase 120 os 6
+  mundos se repetem com numeral ("Floresta Encantada II"); a dificuldade sobe até ~fase 100 e depois varia entre 10
+  e 12 cores. Veredito "sem saída" do solucionador conferido contra busca
   exaustiva (27/27).
 - **Arte**: 97 imagens novas geradas no Codex (mundos, 54 cartas, Luna em 5 poses, reforços, ícones, rolha, pedra,
   logo, ícone do app) + o kit de UI do Shelf Pop (mesmo design system); garrafas de vidro desenhadas por código a
