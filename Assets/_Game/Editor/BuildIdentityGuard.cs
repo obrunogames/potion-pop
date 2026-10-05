@@ -34,6 +34,9 @@ namespace PotionPop.EditorTools
                     "Run Potion Pop > Rebuild Project (or build from the Potion Pop/Build menu) to apply the player settings.");
 
             bool release = (report.summary.options & BuildOptions.Development) == 0;
+#if UNITY_ANDROID
+            if (target == NamedBuildTarget.Android) PotionPopBuilder.ValidateAndroidIcons();
+#endif
             if (release && target != NamedBuildTarget.Standalone) CheckServicesConfig(target == NamedBuildTarget.iOS);
         }
 

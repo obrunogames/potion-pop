@@ -495,6 +495,19 @@ namespace PotionPop.Game
             catch (Exception) { return false; }
         }
 
+        /// <summary>Wait for every queued job. If the view truly stalled, reconcile it before any end/stuck flow.</summary>
+        bool ViewSettled(float now, float since, float timeout)
+        {
+            if (!ViewAnimating()) return true;
+            try
+            {
+                if (now - Mathf.Max(since, View.LastAnimationProgressTime) <= timeout) return false;
+                View.RefreshAll();
+            }
+            catch (Exception e) { Debug.LogException(e); }
+            return !ViewAnimating();
+        }
+
         void SafeView(Action<BoardView> a)
         {
             if (View == null || a == null) return;

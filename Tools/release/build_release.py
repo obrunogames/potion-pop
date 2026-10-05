@@ -54,11 +54,17 @@ def signing_env():
                 POTIONPOP_KEY_ALIAS=cfg["alias"], POTIONPOP_KEY_PASS=cfg["keyPass"])
 
 
+def android_icons(script, *args):
+    # Reuse the art pipeline's Pillow dependency; no image regeneration or store/network calls.
+    subprocess.check_call(["uv", "run", "--with", "pillow", "python", os.path.join(ROOT, "Tools/release", script), *args])
+
+
 def android_dev():
     out_in_copy = os.path.join(COPY, "Builds/Android/PotionPop-dev.apk")
     unity("Android", "PotionPop.EditorTools.BuildScript.BuildAndroidApk", os.path.join(COPY, "android_dev_build.log"),
           extra=("-development", "-buildOutput", out_in_copy))
     name, _ = version()
+    android_icons("validate_android_icons.py", out_in_copy)
     out = os.path.join(ROOT, "Builds/dev", f"PotionPop-{name}-dev.apk")
     os.makedirs(os.path.dirname(out), exist_ok=True)
     shutil.copy(out_in_copy, out)
@@ -68,9 +74,11 @@ def android_dev():
 def android():
     unity("Android", "PotionPop.EditorTools.BuildScript.BuildAndroidAab", os.path.join(COPY, "android_build.log"), signing_env())
     name, code = version()
+    built = os.path.join(COPY, "Builds/Android/PotionPop.aab")
+    android_icons("validate_android_icons.py", built, "--code", code)
     out = os.path.join(ROOT, "Builds/release", f"PotionPop-{name}-{code}.aab")
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    shutil.copy(os.path.join(COPY, "Builds/Android/PotionPop.aab"), out)
+    shutil.copy(built, out)
     print(out)
 
 
@@ -103,5 +111,7 @@ if __name__ == "__main__":
     what = sys.argv[1] if len(sys.argv) > 1 else ""
     if what not in ("android-dev", "android", "ios"):
         sys.exit(__doc__)
+    if what.startswith("android"):
+        android_icons("android_icons.py")
     sync()
     {"android-dev": android_dev, "android": android, "ios": ios}[what]()

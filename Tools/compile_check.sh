@@ -79,6 +79,12 @@ if [ -d Assets/_Game/Editor ] && [ -f "$OUT/PotionPop.Runtime.dll" ]; then
     echo "== editor"
     csc "$OUT/PotionPop.Editor.dll" "$BASE_DEFS;UNITY_EDITOR;UNITY_EDITOR_OSX" "$OUT/editor.txt" $(refs_editor) \
       -r:"$OUT/PotionPop.Runtime.dll" || status=1
+    ANDROID_EDITOR=/Applications/Unity/Hub/Editor/6000.6.3f1/PlaybackEngines/AndroidPlayer/UnityEditor.Android.Extensions.dll
+    if [ -f "$ANDROID_EDITOR" ]; then
+      echo "== editor (Android build processors)"
+      csc "$OUT/PotionPop.Editor.Android.dll" "$BASE_DEFS;UNITY_EDITOR;UNITY_EDITOR_OSX;UNITY_ANDROID" "$OUT/editor.txt" $(refs_editor) \
+        -r:"$OUT/PotionPop.Runtime.dll" -r:"$ANDROID_EDITOR" || status=1
+    fi
   fi
 fi
 

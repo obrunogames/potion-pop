@@ -60,9 +60,7 @@ namespace PotionPop.EditorTools
             // A portrait-only app that allows iPad Split View is rejected by App Store Connect (ITMS-90474).
             PlayerSettings.iOS.requiresFullScreen = true;
 
-            var icon = AssetDatabase.LoadAssetAtPath<Texture2D>(AppIconPath);
-            if (icon != null) PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new[] { icon }, IconKind.Any);
-            else Debug.LogWarning(EditorUtil.LogPrefix + "App icon not found at " + AppIconPath + " (run the art pipeline); default icon left unchanged.");
+            ApplyAppIcons();
 
             // GameRoot draws its own animated splash on the first frame: the engine splash only provides the
             // background color (also used by the iOS launch screen) instead of adding a second logo screen.
