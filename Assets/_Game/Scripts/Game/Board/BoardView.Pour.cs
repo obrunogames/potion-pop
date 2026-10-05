@@ -42,7 +42,11 @@ namespace PotionPop.Game.Board
                 Invoke(onDone);
                 return;
             }
-            if (_selected == result.from) _selected = -1;   // the job takes the lifted bottle over from its current pose
+            if (_selected == result.from)
+            {
+                _selected = -1;   // the job takes the lifted bottle over from its current pose
+                View(result.from).SetSelectedGlow(false);
+            }
             var job = new PourJob(result.from, result.to, result.color, Mathf.Max(0, result.amount))
             {
                 hiddenPoured = Mathf.Max(0, result.hiddenPoured),

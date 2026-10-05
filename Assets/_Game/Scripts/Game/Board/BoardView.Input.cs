@@ -5,7 +5,9 @@
 //      another bottle while one is lifted → OnPourRequested(from, to), the session answers PlayPour / PlayInvalid
 //      (no answer → the bottle is put down) · selectable bottle → lift (Sfx.Select, light haptic, OnBottleSelected) ·
 //      empty / completed bottle → PlayRefuseSelect.
-//  * Busy bottles (running / queued animation, shattering stone) ignore taps; InputEnabled gates everything.
+//  * Pouring bottles accept the next intent against the committed model. Their jobs serialize per bottle;
+//    independent jobs start immediately. Selection never takes the pose away from an animation.
+//  * Shattering stones still ignore taps; InputEnabled gates intro, popups, boosters and ended attempts.
 //  * Pointer-down on the board background puts the lifted bottle down.
 // ============================================================================================================
 using PotionPop.Levels;
@@ -17,12 +19,13 @@ namespace PotionPop.Game.Board
     public sealed partial class BoardView
     {
         const float LiftTiltDeg = 3.5f;
+        bool _requestingPour;
 
         internal void HandleBottleTap(int i)
         {
-            if (!InputEnabled || Board == null || i < 0 || i >= Board.Count) return;
+            if (!InputEnabled || Board == null || _requestingPour || i < 0 || i >= Board.Count) return;
             var v = View(i);
-            if (v == null || IsBusy(i)) return;
+            if (v == null || _clock < v.fxBusyUntil) return;
             var b = Board[i];
 
             if (b.IsLocked)
@@ -44,14 +47,16 @@ namespace PotionPop.Game.Board
             if (_selected >= 0)
             {
                 int from = _selected;
-                if (IsBusy(from) || View(from) == null)
+                if (View(from) == null)
                 {
                     _selected = -1;
                 }
                 else
                 {
                     int stamp = _answerStamp;
-                    Invoke(OnPourRequested, from, i);
+                    _requestingPour = true;
+                    try { Invoke(OnPourRequested, from, i); }
+                    finally { _requestingPour = false; }
                     // No PlayPour / PlayInvalid came back: don't leave the bottle hanging in the air.
                     if (stamp == _answerStamp && _selected == from) DeselectInternal(true, false);
                     return;
@@ -61,8 +66,8 @@ namespace PotionPop.Game.Board
             if (Board.CanSelect(i))
             {
                 _selected = i;
-                v.Lift(LiftTilt(v));
-                v.slot.SetAsLastSibling();
+                if (IsBusy(i)) v.SetSelectedGlow(true);
+                else LiftSelectedWhenReady();
                 AudioManager.Play(Sfx.Select);
                 Haptics.Play(HapticType.Light);
                 Invoke(OnBottleSelected, i);
@@ -73,8 +78,16 @@ namespace PotionPop.Game.Board
         internal void HandleBackgroundTap()
         {
             if (!InputEnabled || Board == null || _selected < 0) return;
-            if (IsBusy(_selected)) return;
             DeselectInternal(true, true);
+        }
+
+        /// <summary>A tap during a pour remembers selection; only lift once its job released the pose.</summary>
+        void LiftSelectedWhenReady()
+        {
+            var v = View(_selected);
+            if (v == null || v.lifted || IsBusy(_selected)) return;
+            v.Lift(LiftTilt(v));
+            v.slot.SetAsLastSibling();
         }
 
         /// <summary>Lifted bottles lean slightly toward the board center (ready to pour).</summary>
@@ -109,7 +122,7 @@ namespace PotionPop.Game.Board
                     vf.Lower(true, 0.24f);
                 }
             }
-            else if (_selected == from) _selected = -1;
+            else if (_selected == from) DeselectInternal(true, false);
 
             bool targetIssue = why == PourRefusal.TargetFull || why == PourRefusal.WrongColor ||
                                why == PourRefusal.TargetDone || why == PourRefusal.TargetLocked;

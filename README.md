@@ -47,7 +47,13 @@ Menu **Potion Pop** no editor: Rebuild Project, Validate Levels 1-500, Build (An
 Screenshot, QA Tour e Debug (moedas, reforços, vidas, pular/vencer fase, apagar save).
 
 Testes: **Window ▸ General ▸ Test Runner ▸ EditMode** (regras das garrafas, solucionador, fases 1–300, save, economia,
-idiomas, serviços).
+idiomas, serviços) e **PlayMode** (toques rápidos, despejos paralelos, fila por garrafa, reentrância, pedras,
+desfazer, cancelamento e vitória). Jogadas rápidas são validadas no estado já confirmado: animações de garrafas
+independentes começam juntas; as que usam a mesma garrafa seguem a ordem dos toques.
+
+O teste visual de PlayMode usa o `CaptureTool` existente quando `POTIONPOP_QA_CAPTURE_DIR` aponta para uma pasta
+de capturas. Execute com renderização habilitada (sem `-nographics`); ele usa save em memória e não altera o progresso
+real. Sem a variável, a parte de captura é ignorada.
 
 ## Contas, nuvem e anúncios
 
@@ -84,3 +90,26 @@ uv run --with pillow --with numpy --with scipy python Tools/export_catalog.py   
 uv run --with pillow --with numpy --with scipy python Tools/gen_audio.py         # sintetiza efeitos e músicas
 Tools/compile_check.sh                                                           # compila o C# em ~5 s sem abrir o Unity
 ```
+
+## Ícones Android e build local
+
+O launcher Android usa a arte original de Luna em `Assets/_Game/Art/AppIcon/app_icon.png`,
+a mesma de `Docs/loja/imagens/icone_512.png`. `Tools/release/android_icons.py` deriva as camadas
+adaptativas com margem transparente, sem recriar a ilustração. `ApplyAppIcons` preenche todos os slots
+Android; `BuildIdentityGuard` rejeita camadas ausentes/incorretas, e o pós-processador gera o ícone
+opaco de compatibilidade em seis densidades (Unity 6000.6 expõe somente slots adaptativos).
+
+```bash
+python3 Tools/release/build_release.py android
+uv run --with pillow python Tools/release/validate_android_icons.py Builds/release/PotionPop-1.0.0-2.aab --code 2
+```
+
+O pipeline Android deriva as camadas antes de sincronizar a cópia do projeto e valida os pixels de todas
+as 18 imagens empacotadas antes de aceitar o build. Para AAB, verifica também estrutura, pacote,
+código de versão, referência do launcher no manifesto e assinatura. A chave continua vindo do setup existente.
+`Assets/_Game/Tests/EditorBuild` cobre builds com foreground vazio ou background errado.
+
+Em 2026-10-05, o AAB Android 1.0.0/código 2 foi gerado e validado localmente para corrigir o launcher
+Unity do código 1. Inclui as jogadas rápidas, passou 124 testes EditMode e 18 PlayMode e foi instalado
+no emulador Pixel_10. O certificado é o mesmo do AAB anterior. Nenhum upload/envio à loja foi feito;
+a versão e o build iOS continuam 1.0.0/1.

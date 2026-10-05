@@ -6,7 +6,7 @@
 //  * draws the bottles of a BoardState inside its RectTransform (layout in rows, scaled to fit), glass sprites from
 //    bottle_shape.json + liquid drawn as a mesh with a horizontal surface even while the bottle tilts;
 //  * handles taps: first tap lifts a selectable bottle, a tap on another bottle asks the session to pour
-//    (OnPourRequested), a tap on the lifted bottle puts it back; taps on busy (animating) bottles are ignored;
+//    (OnPourRequested), a tap on the selected bottle cancels selection; animation jobs serialize busy bottles;
 //  * animates whatever the session tells it (PlayPour, PlayUndo, boosters...). Several pours may animate at once
 //    on different bottles: the model (BoardState) is already updated when Play* is called.
 // The view never changes the BoardState itself.
@@ -36,8 +36,8 @@ namespace PotionPop.Game.Board
     {
         // ------------------------------------------------------------------------------------------------ events
 
-        /// <summary>The player asks to pour from → to (both idle, from was lifted). The session validates with
-        /// BoardState.Pour and answers with PlayPour (legal) or PlayInvalid (illegal).</summary>
+        /// <summary>The player asks to pour from → to. The session validates the committed model with
+        /// BoardState.Pour and answers with PlayPour (queued if necessary) or PlayInvalid (illegal).</summary>
         public event Action<int, int> OnPourRequested;
         /// <summary>A bottle was lifted (tutorial hand progression, sound is played by the view).</summary>
         public event Action<int> OnBottleSelected;
@@ -134,13 +134,13 @@ namespace PotionPop.Game.Board
         /// <summary>Taps are accepted (the session turns it off during intro, popups, win...).</summary>
         public bool InputEnabled { get; set; } = true;
 
-        /// <summary>Index of the lifted bottle (-1 none).</summary>
+        /// <summary>Index of the selected bottle (-1 none); a busy bottle lifts once its pose is free.</summary>
         public int Selected => _selected;
 
         /// <summary>Any animation is running.</summary>
         public bool IsAnimating => _active.Count > 0 || _queue.Count > 0;
 
-        /// <summary>That bottle is part of a running animation (can't be tapped).</summary>
+        /// <summary>That bottle is reserved by an animation (its next animation must wait).</summary>
         public bool IsBusy(int bottle)
         {
             var v = View(bottle);
@@ -260,6 +260,7 @@ namespace PotionPop.Game.Board
             _frameDt = dt;
             _clock += dt;
             TickJobs(dt);
+            LiftSelectedWhenReady();
             UpdatePlacement(dt);
             UpdateShimmer(dt);
             UpdateHint(dt);

@@ -25,7 +25,7 @@ namespace PotionPop.Game
         public const int InvalidToastsPerKind = 3;
 
         const float CheckDelay = 0.05f;
-        const float CheckForceAfter = 6f;          // the view claims to animate forever: check anyway
+        const float CheckForceAfter = 6f;          // no animation progress: snap the view before checking
         const float PraiseTimeout = 4f;            // the view never corked a completed bottle: praise anyway
 
         sealed class PendingPraise
@@ -69,6 +69,7 @@ namespace PotionPop.Game
         Analysis _analysis;
         bool _hasAnalysis;
         bool _inDeadEnd;
+        bool _handlingPour;
 
         static void ResetStaticFeedback() => _invalidToasts = null;
 
@@ -96,26 +97,34 @@ namespace PotionPop.Game
         /// <summary>BoardView.OnPourRequested: the player asks to pour from → to.</summary>
         public void HandlePourRequest(int from, int to)
         {
+            // Synchronous save/tutorial listeners must not commit another move before this one's view snapshot.
+            // This guard lasts only for dispatch, never for an animation (rapid sequential taps remain accepted).
+            if (_handlingPour) return;
             if (State != SessionState.Playing || Board == null || _busy > 0 || Halted)
             {
                 // Not now (popup, booster animation): just put the lifted bottle back down.
                 SafeView(v => v.Deselect(true));
                 return;
             }
-            var why = Board.Check(from, to);
-            PourResult r = null;
-            if (why == PourRefusal.None)
+            _handlingPour = true;
+            try
             {
-                try { r = Board.Pour(from, to); }
-                catch (Exception e) { Debug.LogException(e); }
-                if (r == null) why = PourRefusal.Invalid;
+                var why = Board.Check(from, to);
+                PourResult r = null;
+                if (why == PourRefusal.None)
+                {
+                    try { r = Board.Pour(from, to); }
+                    catch (Exception e) { Debug.LogException(e); }
+                    if (r == null) why = PourRefusal.Invalid;
+                }
+                if (r == null)
+                {
+                    OnInvalidPour(from, to, why);
+                    return;
+                }
+                OnPoured(r);
             }
-            if (r == null)
-            {
-                OnInvalidPour(from, to, why);
-                return;
-            }
-            OnPoured(r);
+            finally { _handlingPour = false; }
         }
 
         /// <summary>BoardView.OnBottleSelected: a bottle was lifted.</summary>
@@ -334,7 +343,7 @@ namespace PotionPop.Game
         void TickChecks(float now)
         {
             if (_checkPending && now >= _checkAt && _busy == 0
-                && (!ViewAnimating() || now - _checkScheduledAt > CheckForceAfter))
+                && ViewSettled(now, _checkScheduledAt, CheckForceAfter))
             {
                 PostCheck();
                 if (State != SessionState.Playing) return;

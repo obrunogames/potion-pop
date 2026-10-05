@@ -16,7 +16,7 @@ namespace PotionPop.Game
     public sealed partial class GameSession
     {
         const float WinSettleDelay = 0.35f;        // let the last cork / sparkles land before the wave
-        const float WinSettleTimeout = 4f;         // board still "animating" after the win → celebrate anyway
+        const float WinSettleTimeout = 4f;         // no animation progress after the win → reconcile, then celebrate
         const float CelebrationTimeout = 5f;       // PlayWin never called back → continue the win flow
 
         bool _winPending;
@@ -263,7 +263,7 @@ namespace PotionPop.Game
         void TickEnded(float dt, float now)
         {
             if (_winPending && now >= _winSettleAt
-                && ((_busy == 0 && !ViewAnimating()) || now - _wonAt > WinSettleTimeout))
+                && _busy == 0 && ViewSettled(now, _wonAt, WinSettleTimeout))
             {
                 _winPending = false;
                 Celebrate();

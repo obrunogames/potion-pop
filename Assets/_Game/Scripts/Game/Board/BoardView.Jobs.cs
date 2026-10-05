@@ -136,6 +136,9 @@ namespace PotionPop.Game.Board
         bool _hadJobs;
         int _answerStamp;
 
+        /// <summary>Last real timeline progress, so a long queue is not mistaken for a stalled animation.</summary>
+        public float LastAnimationProgressTime { get; private set; }
+
         /// <summary>Schedules a job (it starts at once when its bottles are free).</summary>
         void Run(BoardJob job, Action onDone)
         {
@@ -144,6 +147,7 @@ namespace PotionPop.Game.Board
             job.seq = ++_seq;
             _queue.Add(job);
             _hadJobs = true;
+            LastAnimationProgressTime = Time.unscaledTime;
             StartReadyJobs();
         }
 
@@ -192,7 +196,12 @@ namespace PotionPop.Game.Board
             {
                 var job = _active[i];
                 if (job.finished) continue;
-                try { job.Step(dt); }
+                try
+                {
+                    float before = job.t;
+                    job.Step(dt);
+                    if (job.t > before) LastAnimationProgressTime = Time.unscaledTime;
+                }
                 catch (Exception e)
                 {
                     Debug.LogException(e);
